@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp CRM - Başlatıcı</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            max-width: 600px;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+        .status {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .btn {
+            background: #25D366;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #128C7E;
+            transform: translateY(-2px);
+        }
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .info {
+            background: rgba(33, 150, 243, 0.2);
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 WhatsApp CRM Hazır!</h1>
+        
+        <div class="status">
+            <h3>Sistem Durumu</h3>
+            <div id="serverStatus">
+                <p><strong>Demo Sunucu:</strong> <span class="success">✅ Çalışıyor</span></p>
+                <p><strong>Bağlı İstemci:</strong> <span class="success">✅ 1 Aktif</span></p>
+                <p><strong>Mod:</strong> <span class="success">✅ Demo</span></p>
+                <p><strong>Durum:</strong> <span class="success">✅ Ready</span></p>
+            </div>
+        </div>
+
+        <div class="info">
+            <h4>📱 WhatsApp CRM Özellikler</h4>
+            <ul style="text-align: left;">
+                <li>✅ Demo WhatsApp bağlantısı</li>
+                <li>✅ Toplu mesaj gönderimi</li>
+                <li>✅ Kişi ve grup yönetimi</li>
+                <li>✅ AI asistan</li>
+                <li>✅ Şablon sistemi</li>
+                <li>✅ Analytics ve raporlar</li>
+            </ul>
+        </div>
+
+        <div style="margin: 30px 0;">
+            <a href="index.html" class="btn">
+                🚀 WhatsApp CRM'i Başlat
+            </a>
+            <br><br>
+            <button onclick="window.location.reload()" class="btn" style="background: #FF9800;">
+                🔄 Durumu Yenile
+            </button>
+        </div>
+
+        <div class="info">
+            <h4>🎯 Hızlı Başlangıç</h4>
+            <ol style="text-align: left;">
+                <li>"WhatsApp CRM'i Başlat" butonuna tıklayın</li>
+                <li>"WhatsApp'a Bağlan" butonuna tıklayın</li>
+                <li>5 saniye bekleyin (otomatik bağlantı)</li>
+                <li>Demo kişilerini görün ve test edin</li>
+            </ol>
+        </div>
+
+        <p style="margin-top: 30px; opacity: 0.8;">
+            <small>Port 3025'te demo sunucu çalışıyor • Tüm özellikler demo modunda aktif</small>
+        </p>
+    </div>
+
+    <script>
+        // Server status check
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('http://localhost:3025/');
+                const data = await response.json();
+                
+                document.getElementById('serverStatus').innerHTML = `
+                    <p><strong>Demo Sunucu:</strong> <span class="success">✅ ${data.status}</span></p>
+                    <p><strong>Bağlı İstemci:</strong> <span class="success">✅ ${data.connectedClients} Aktif</span></p>
+                    <p><strong>Mod:</strong> <span class="success">✅ ${data.mode}</span></p>
+                    <p><strong>QR Durumu:</strong> <span class="success">✅ ${data.hasQR ? 'QR Hazır' : 'Bağlı'}</span></p>
+                `;
+            } catch (error) {
+                document.getElementById('serverStatus').innerHTML = `
+                    <p style="color: #f44336;"><strong>Sunucu:</strong> ❌ Bağlantı Hatası</p>
+                    <p><small>Demo sunucunun çalıştığından emin olun</small></p>
+                `;
+            }
+        }
+
+        // Check status on load
+        checkServerStatus();
+        
+        // Auto refresh every 10 seconds
+        setInterval(checkServerStatus, 10000);
+    </script>
+</body>
+</html>

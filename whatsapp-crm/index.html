@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="WhatsApp CRM arayüzü">
+    <title>WhatsApp CRM</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20241224">
+    <!-- Önbellek sorununu çözmek için script versiyonu dinamik olarak güncellendi -->
+    <script>
+        document.write('<script src="script.js?v=' + new Date().getTime() + '"><\/script>');
+    </script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <i class="fab fa-whatsapp"></i>
+                <h1>WhatsApp CRM</h1>
+            </div>
+            <div class="header-right">
+                <button class="btn-primary" id="connectWhatsApp">
+                    <i class="fab fa-whatsapp"></i>
+                    <span id="connectionStatus">WhatsApp'a Bağlan</span>
+                </button>
+                <div class="user-profile">
+                    <div class="profile-img">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <span>Admin</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <nav class="sidebar-nav">
+                    <ul>
+                        <li class="nav-item active" data-section="dashboard">
+                            <i class="fas fa-chart-dashboard"></i>
+                            <span>Dashboard</span>
+                        </li>
+                        <li class="nav-item" data-section="contacts">
+                            <i class="fas fa-address-book"></i>
+                            <span>Kişiler</span>
+                            <span class="count">247</span>
+                        </li>
+                        <li class="nav-item" data-section="bulk-sender">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Toplu Gönderim</span>
+                        </li>
+                        <li class="nav-item" data-section="templates">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Şablonlar</span>
+                        </li>
+                        <li class="nav-item" data-section="broadcast">
+                            <i class="fas fa-broadcast-tower"></i>
+                            <span>Broadcast</span>
+                        </li>
+                        <li class="nav-item" data-section="automation">
+                            <i class="fas fa-robot"></i>
+                            <span>Otomasyon</span>
+                        </li>
+                        <li class="nav-item" data-section="analytics">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Analitik</span>
+                        </li>
+                        <li class="nav-item" data-section="ai-assistant">
+                            <i class="fas fa-robot"></i>
+                            <span>AI Asistan</span>
+                        </li>
+                        <li class="nav-item" data-section="settings">
+                            <i class="fas fa-cog"></i>
+                            <span>Ayarlar</span>
+                        </li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <!-- Content Area -->
+            <main class="content-area">
+                <!-- Dashboard Section -->
+                <section id="dashboard" class="content-section active">
+                    <div class="section-header">
+                        <h2>Dashboard</h2>
+                        <div class="date-range">
+                            <i class="fas fa-calendar"></i>
+                            <span>Son 30 Gün</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>247</h3>
+                                <p>Toplam Kişi</p>
+                                <span class="stat-change positive">+12%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-paper-plane"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>1,543</h3>
+                                <p>Gönderilen Mesaj</p>
+                                <span class="stat-change positive">+8%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-eye"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>89%</h3>
+                                <p>Okunma Oranı</p>
+                                <span class="stat-change negative">-2%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-reply"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3>34%</h3>
+                                <p>Yanıtlama Oranı</p>
+                                <span class="stat-change positive">+5%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-widgets">
+                        <div class="widget chart-widget">
+                            <h3>Mesaj Gönderim Trendi</h3>
+                            <div class="chart-placeholder">
+                                <canvas id="messageChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="widget recent-activity">
+                            <h3>Son Aktiviteler</h3>
+                            <div class="activity-list">
+                                <div class="activity-item">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <div class="activity-info">
+                                        <p><strong>Toplu mesaj gönderildi</strong></p>
+                                        <small>247 kişiye "Yeni Ürün Tanıtımı" mesajı</small>
+                                        <time>2 saat önce</time>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <i class="fas fa-user-plus"></i>
+                                    <div class="activity-info">
+                                        <p><strong>Yeni kişi eklendi</strong></p>
+                                        <small>Ahmet Yılmaz (+90 555 123 4567)</small>
+                                        <time>4 saat önce</time>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <i class="fas fa-file-alt"></i>
+                                    <div class="activity-info">
+                                        <p><strong>Şablon oluşturuldu</strong></p>
+                                        <small>"Hoş Geldin Mesajı" şablonu</small>
+                                        <time>1 gün önce</time>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Bulk Sender Section -->
+                <section id="bulk-sender" class="content-section">
+                    <div class="section-header">
+                        <h2>Toplu Gönderim</h2>
+                        <button class="btn-primary" id="newCampaign">
+                            <i class="fas fa-plus"></i>
+                            Yeni Kampanya
+                        </button>
+                    </div>
+
+                    <div class="bulk-sender-container">
+                        <div class="sender-left">
+                            <div class="recipient-section">
+                                <h3>Alıcılar</h3>
+                                <div class="recipient-options">
+                                    <label class="radio-option">
+                                        <input type="radio" name="recipientType" value="all" checked>
+                                        <span>Tüm Kişiler (247)</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="recipientType" value="groups">
+                                        <span>Kişi Grupları</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="recipientType" value="whatsapp-groups">
+                                        <span>WhatsApp Grupları</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="recipientType" value="custom">
+                                        <span>Özel Seçim</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="recipientType" value="manual">
+                                        <span>Manuel Giriş</span>
+                                    </label>
+                                </div>
+
+                                <!-- WhatsApp Grupları Seçimi -->
+                                <div class="whatsapp-groups-selector" id="whatsappGroupsSelector" style="display: none;">
+                                    <h4><i class="fab fa-whatsapp"></i> WhatsApp Grupları</h4>
+                                    <div class="search-box">
+                                        <i class="fas fa-search"></i>
+                                        <input type="text" placeholder="Grup ara..." id="groupSearch">
+                                    </div>
+                                    <div class="whatsapp-groups-list" id="whatsappGroupsList">
+                                        <!-- WhatsApp grupları buraya yüklenecek -->
+                                        <div class="loading-message">
+                                            <i class="fas fa-spinner loading-icon"></i>
+                                            WhatsApp grupları yükleniyor...
+                                        </div>
+                                    </div>
+                                    <div class="selected-groups-count" id="selectedGroupsCount">
+                                        <i class="fas fa-users"></i> 0 grup seçildi
+                                    </div>
+                                </div>
+
+                                <!-- Manuel Giriş Alanı -->
+                                <div class="manual-entry" id="manualEntry" style="display: none;">
+                                    <h4>Manuel Kişi Girişi</h4>
+                                    <div class="manual-form">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Ad Soyad</label>
+                                                <input type="text" id="manualName" placeholder="Örn: Ahmet Yılmaz">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Telefon Numarası</label>
+                                                <input type="tel" id="manualPhone" placeholder="Örn: +90 555 123 4567">
+                                            </div>
+                                            <button type="button" class="btn-secondary add-manual-btn" id="addManualContact">
+                                                <i class="fas fa-plus"></i>
+                                                Ekle
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="manual-contacts-list" id="manualContactsList">
+                                            <!-- Manuel eklenen kişiler burada görünecek -->
+                                        </div>
+                                        
+                                        <div class="bulk-import">
+                                            <h5>Toplu İçe Aktar</h5>
+                                            <textarea id="bulkImport" placeholder="Her satıra bir kişi yazın:
+Ad Soyad, Telefon
+Ahmet Yılmaz, +90 555 123 4567
+Ayşe Demir, +90 555 234 5678
+Mehmet Kaya, +90 555 345 6789" rows="5"></textarea>
+                                            <button type="button" class="btn-secondary" onclick="importBulkContacts()">
+                                                <i class="fas fa-upload"></i>
+                                                Toplu İçe Aktar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="contact-selector" id="contactSelector">
+                                    <div class="search-box">
+                                        <i class="fas fa-search"></i>
+                                        <input type="text" placeholder="Kişi ara..." id="contactSearch">
+                                    </div>
+                                    <div class="contact-list" id="contactList">
+                                        <!-- Contacts will be loaded here -->
+                                    </div>
+                                </div>
+
+                                <div class="selected-count">
+                                    <span id="selectedCount">247</span> kişi seçildi
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="sender-right">
+                            <div class="message-composer">
+                                <h3>Mesaj Oluştur</h3>
+                                
+                                <div class="template-selector">
+                                    <label>Şablon Seç (Opsiyonel)</label>
+                                    <select id="templateSelect">
+                                        <option value="">Şablon seçin...</option>
+                                        <option value="welcome">Hoş Geldin Mesajı</option>
+                                        <option value="product">Ürün Tanıtımı</option>
+                                        <option value="reminder">Hatırlatma</option>
+                                    </select>
+                                </div>
+
+                                <div class="message-input">
+                                    <label>Mesaj İçeriği</label>
+                                    <textarea id="messageContent" placeholder="Mesajınızı buraya yazın...
+                                    
+Değişkenler:
+{isim} - Kişinin adı
+{telefon} - Telefon numarası
+{tarih} - Bugünün tarihi"></textarea>
+                                    <div class="char-count">
+                                        <span id="charCount">0</span> / 4096 karakter
+                                    </div>
+                                </div>
+
+                                <div class="media-section">
+                                    <label>Medya Ekle (Opsiyonel)</label>
+                                    <div class="media-upload">
+                                        <input type="file" id="mediaFile" accept="image/*,video/*,audio/*,.pdf,.doc,.docx">
+                                        <label for="mediaFile" class="upload-btn">
+                                            <i class="fas fa-paperclip"></i>
+                                            Dosya Seç
+                                        </label>
+                                        <div id="mediaPreview"></div>
+                                    </div>
+                                </div>
+
+                                <div class="scheduling-section">
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" id="scheduleMessage">
+                                        <span>Zamanla Gönder</span>
+                                    </label>
+                                    <div class="schedule-inputs" id="scheduleInputs" style="display: none;">
+                                        <input type="datetime-local" id="scheduleTime">
+                                    </div>
+                                </div>
+
+                                <div class="sending-options">
+                                    <div class="option-group">
+                                        <label>Gönderim Hızı</label>
+                                        <select id="sendingSpeed">
+                                            <option value="normal">Normal (1 mesaj/saniye)</option>
+                                            <option value="slow">Yavaş (1 mesaj/2 saniye)</option>
+                                            <option value="fast">Hızlı (2 mesaj/saniye)</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" id="randomDelay">
+                                        <span>Rastgele gecikme ekle</span>
+                                    </label>
+
+                                    <!-- Akıllı Bekleme Ayarları -->
+                                    <div class="smart-delay-settings">
+                                        <h4><i class="fas fa-brain"></i> Akıllı Bekleme Sistemi</h4>
+                                        <p class="info-text">Spam koruması için belirtilen mesaj sayılarından sonra otomatik bekleme yapılır.</p>
+                                        
+                                        <div class="delay-rules">
+                                            <div class="delay-rule">
+                                                <div class="rule-info">
+                                                    <span class="rule-trigger">Her 10 mesajdan sonra:</span>
+                                                </div>
+                                                <div class="rule-input">
+                                                    <input type="number" id="delay10" value="30" min="10" max="300">
+                                                    <span>saniye bekle</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="delay-rule">
+                                                <div class="rule-info">
+                                                    <span class="rule-trigger">100 mesajdan sonra:</span>
+                                                </div>
+                                                <div class="rule-input">
+                                                    <input type="number" id="delay100" value="300" min="60" max="1800">
+                                                    <span>saniye bekle</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="delay-rule">
+                                                <div class="rule-info">
+                                                    <span class="rule-trigger">300 mesajdan sonra:</span>
+                                                </div>
+                                                <div class="rule-input">
+                                                    <input type="number" id="delay300" value="600" min="300" max="3600">
+                                                    <span>saniye bekle</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="delay-rule">
+                                                <div class="rule-info">
+                                                    <span class="rule-trigger">500 mesajdan sonra:</span>
+                                                </div>
+                                                <div class="rule-input">
+                                                    <input type="number" id="delay500" value="1800" min="600" max="7200">
+                                                    <span>saniye bekle</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <label class="checkbox-option">
+                                            <input type="checkbox" id="enableSmartDelay" checked>
+                                            <span>Akıllı bekleme sistemini etkinleştir</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="send-buttons">
+                                    <button class="btn-secondary" id="previewMessage">
+                                        <i class="fas fa-eye"></i>
+                                        Önizleme
+                                    </button>
+                                    <button class="btn-primary" id="sendBulkMessage">
+                                        <i class="fas fa-paper-plane"></i>
+                                        Gönder
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Contacts Section -->
+                <section id="contacts" class="content-section">
+                    <div class="section-header">
+                        <h2>Kişiler</h2>
+                        <div class="header-actions">
+                            <button class="btn-secondary" id="syncWhatsAppContacts">
+                                <i class="fas fa-sync"></i>
+                                WhatsApp'tan Çek
+                            </button>
+                            <button class="btn-secondary" id="importContacts">
+                                <i class="fas fa-upload"></i>
+                                Dosyadan İçe Aktar
+                            </button>
+                            <button class="btn-primary" id="addContact">
+                                <i class="fas fa-plus"></i>
+                                Kişi Ekle
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="contacts-container">
+                        <div class="contacts-filters">
+                            <div class="search-bar">
+                                <i class="fas fa-search"></i>
+                                <input type="text" placeholder="Kişi ara..." id="contactSearchMain">
+                            </div>
+                            <div class="filter-buttons">
+                                <button class="filter-btn active" data-filter="all">Tümü</button>
+                                <button class="filter-btn" data-filter="recent">Son Eklenen</button>
+                                <button class="filter-btn" data-filter="active">Aktif</button>
+                            </div>
+                        </div>
+
+                        <div class="contacts-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" id="selectAllContacts"></th>
+                                        <th>Ad Soyad</th>
+                                        <th>Telefon</th>
+                                        <th>Grup</th>
+                                        <th>Son Mesaj</th>
+                                        <th>Durum</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="contactsTableBody">
+                                    <!-- Contacts will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Templates Section -->
+                <section id="templates" class="content-section">
+                    <div class="section-header">
+                        <h2>Mesaj Şablonları</h2>
+                        <button class="btn-primary" id="createTemplate">
+                            <i class="fas fa-plus"></i>
+                            Yeni Şablon
+                        </button>
+                    </div>
+
+                    <div class="templates-grid">
+                        <!-- Templates will be loaded here -->
+                    </div>
+                </section>
+
+                <!-- AI Assistant Section -->
+                <section id="ai-assistant" class="content-section">
+                    <div class="section-header">
+                        <h2>AI Asistan</h2>
+                        <div class="header-actions">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="aiAssistantToggle">
+                                <span class="slider"></span>
+                                <span class="toggle-label">AI Asistan Aktif</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="ai-assistant-container">
+                        <div class="ai-stats">
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-comments"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="aiConversationCount">0</h3>
+                                    <p>Aktif Konuşma</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-calendar-check"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="aiAppointmentCount">0</h3>
+                                    <p>Otomatik Randevu</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-brain"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="aiResponseRate">98%</h3>
+                                    <p>Yanıt Başarı Oranı</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ai-content">
+                            <div class="ai-settings">
+                                <h3>AI Asistan Ayarları</h3>
+                                <div class="settings-grid">
+                                    <div class="setting-group">
+                                        <label>Mesaj Buffer Süresi (saniye)</label>
+                                        <input type="number" id="bufferDelay" value="25" min="5" max="60">
+                                        <small>Müşterinin mesajlarını birleştirme süresi</small>
+                                    </div>
+                                    <div class="setting-group">
+                                        <label>Çalışma Saatleri</label>
+                                        <div class="time-range">
+                                            <input type="number" id="workingStart" value="9" min="0" max="23"> -
+                                            <input type="number" id="workingEnd" value="18" min="0" max="23">
+                                        </div>
+                                    </div>
+                                    <div class="setting-group">
+                                        <label>Randevu Süresi (dakika)</label>
+                                        <input type="number" id="appointmentDuration" value="30" min="15" max="120">
+                                    </div>
+                                </div>
+                                <button class="btn-primary" id="saveAISettings">
+                                    <i class="fas fa-save"></i>
+                                    Ayarları Kaydet
+                                </button>
+                            </div>
+
+                            <div class="knowledge-base">
+                                <h3>Bilgi Bankası (RAG)</h3>
+                                <div class="knowledge-items">
+                                    <div class="knowledge-item">
+                                        <div class="knowledge-header">
+                                            <strong>Hizmetler</strong>
+                                            <span class="category-badge">services</span>
+                                        </div>
+                                        <p>WhatsApp CRM hizmeti sunuyoruz. Müşteri yönetimi, toplu mesaj gönderimi ve AI asistan özelliklerimiz var.</p>
+                                    </div>
+                                    <div class="knowledge-item">
+                                        <div class="knowledge-header">
+                                            <strong>Fiyatlandırma</strong>
+                                            <span class="category-badge">pricing</span>
+                                        </div>
+                                        <p>Fiyatlarımız paket içeriğine göre değişir. Detaylı bilgi için görüşelim.</p>
+                                    </div>
+                                </div>
+                                <button class="btn-secondary" id="addKnowledgeBase">
+                                    <i class="fas fa-plus"></i>
+                                    Bilgi Ekle
+                                </button>
+                            </div>
+
+                            <div class="ai-test">
+                                <h3>AI Asistan Test</h3>
+                                <div class="test-conversation">
+                                    <div class="test-input">
+                                        <input type="text" id="testMessage" placeholder="Test mesajı yazın..." onkeypress="if(event.key==='Enter') testAI()">
+                                        <button onclick="testAI()">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                    <div class="test-results" id="testResults">
+                                        <div class="test-message received">
+                                            <strong>Sistem:</strong> AI Asistan test için hazır. Bir mesaj yazın!
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Broadcast Section -->
+                <section id="broadcast" class="content-section">
+                    <div class="section-header">
+                        <h2>Broadcast Listeleri</h2>
+                        <button class="btn-primary" id="createBroadcast">
+                            <i class="fas fa-plus"></i>
+                            Yeni Broadcast Listesi
+                        </button>
+                    </div>
+
+                    <div class="broadcast-container">
+                        <div class="broadcast-stats">
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-broadcast-tower"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3>5</h3>
+                                    <p>Aktif Liste</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3>1,247</h3>
+                                    <p>Toplam Alıcı</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-paper-plane"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3>23</h3>
+                                    <p>Bu Ay Gönderilen</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="broadcast-lists">
+                            <div class="broadcast-list-card">
+                                <div class="list-header">
+                                    <div class="list-info">
+                                        <h3>Premium Müşteriler</h3>
+                                        <p>VIP müşteri segmenti</p>
+                                        <small>67 kişi • Son güncelleme: 2 gün önce</small>
+                                    </div>
+                                    <div class="list-actions">
+                                        <button class="btn-sm btn-primary" onclick="sendBroadcast(1)">
+                                            <i class="fas fa-paper-plane"></i>
+                                            Gönder
+                                        </button>
+                                        <button class="btn-sm btn-secondary" onclick="editBroadcast(1)">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-sm btn-danger" onclick="deleteBroadcast(1)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="list-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Son Gönderim:</span>
+                                        <span class="stat-value">3 gün önce</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Okunma Oranı:</span>
+                                        <span class="stat-value">89%</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Yanıt Oranı:</span>
+                                        <span class="stat-value">34%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="broadcast-list-card">
+                                <div class="list-header">
+                                    <div class="list-info">
+                                        <h3>Potansiyel Müşteriler</h3>
+                                        <p>Lead nurturing segmenti</p>
+                                        <small>143 kişi • Son güncelleme: 1 gün önce</small>
+                                    </div>
+                                    <div class="list-actions">
+                                        <button class="btn-sm btn-primary" onclick="sendBroadcast(2)">
+                                            <i class="fas fa-paper-plane"></i>
+                                            Gönder
+                                        </button>
+                                        <button class="btn-sm btn-secondary" onclick="editBroadcast(2)">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-sm btn-danger" onclick="deleteBroadcast(2)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="list-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Son Gönderim:</span>
+                                        <span class="stat-value">1 gün önce</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Okunma Oranı:</span>
+                                        <span class="stat-value">76%</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Yanıt Oranı:</span>
+                                        <span class="stat-value">28%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="broadcast-list-card">
+                                <div class="list-header">
+                                    <div class="list-info">
+                                        <h3>Etkinlik Katılımcıları</h3>
+                                        <p>Webinar ve etkinlik katılımcıları</p>
+                                        <small>89 kişi • Son güncelleme: 5 gün önce</small>
+                                    </div>
+                                    <div class="list-actions">
+                                        <button class="btn-sm btn-primary" onclick="sendBroadcast(3)">
+                                            <i class="fas fa-paper-plane"></i>
+                                            Gönder
+                                        </button>
+                                        <button class="btn-sm btn-secondary" onclick="editBroadcast(3)">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-sm btn-danger" onclick="deleteBroadcast(3)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="list-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Son Gönderim:</span>
+                                        <span class="stat-value">1 hafta önce</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Okunma Oranı:</span>
+                                        <span class="stat-value">92%</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Yanıt Oranı:</span>
+                                        <span class="stat-value">41%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Automation Section -->
+                <section id="automation" class="content-section">
+                    <div class="section-header">
+                        <h2>Otomasyon</h2>
+                        <button class="btn-primary" id="createAutomation">
+                            <i class="fas fa-plus"></i>
+                            Yeni Otomasyon
+                        </button>
+                    </div>
+
+                    <div class="automation-container">
+                        <div class="automation-types">
+                            <div class="automation-type-card" onclick="createAutomationType('welcome')">
+                                <div class="type-icon">
+                                    <i class="fas fa-hand-wave"></i>
+                                </div>
+                                <h3>Hoş Geldin Mesajı</h3>
+                                <p>Yeni kişilere otomatik karşılama mesajı gönder</p>
+                            </div>
+                            
+                            <div class="automation-type-card" onclick="createAutomationType('birthday')">
+                                <div class="type-icon">
+                                    <i class="fas fa-birthday-cake"></i>
+                                </div>
+                                <h3>Doğum Günü</h3>
+                                <p>Müşterilerin doğum günlerinde tebrik mesajı</p>
+                            </div>
+                            
+                            <div class="automation-type-card" onclick="createAutomationType('followup')">
+                                <div class="type-icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <h3>Takip Mesajı</h3>
+                                <p>Belirli süre sonra otomatik takip mesajı</p>
+                            </div>
+                            
+                            <div class="automation-type-card" onclick="createAutomationType('abandoned')">
+                                <div class="type-icon">
+                                    <i class="fas fa-shopping-cart"></i>
+                                </div>
+                                <h3>Terk Edilen Sepet</h3>
+                                <p>İşlemi yarıda bırakan müşterilere hatırlatma</p>
+                            </div>
+                        </div>
+
+                        <div class="active-automations">
+                            <h3>Aktif Otomasyonlar</h3>
+                            
+                            <div class="automation-item">
+                                <div class="automation-info">
+                                    <div class="automation-header">
+                                        <h4>Hoş Geldin Serisi</h4>
+                                        <span class="status-badge active">Aktif</span>
+                                    </div>
+                                    <p>Yeni kayıt olan müşterilere 3 günlük hoş geldin mesaj serisi</p>
+                                    <div class="automation-stats">
+                                        <span>67 kişiye gönderildi</span>
+                                        <span>•</span>
+                                        <span>%89 açılma oranı</span>
+                                        <span>•</span>
+                                        <span>Son 30 gün</span>
+                                    </div>
+                                </div>
+                                <div class="automation-actions">
+                                    <button class="btn-sm btn-secondary" onclick="editAutomation(1)">
+                                        <i class="fas fa-edit"></i>
+                                        Düzenle
+                                    </button>
+                                    <button class="btn-sm btn-warning" onclick="pauseAutomation(1)">
+                                        <i class="fas fa-pause"></i>
+                                        Duraklat
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="automation-item">
+                                <div class="automation-info">
+                                    <div class="automation-header">
+                                        <h4>Takip Hatırlatması</h4>
+                                        <span class="status-badge active">Aktif</span>
+                                    </div>
+                                    <p>Son mesajdan 7 gün sonra otomatik takip mesajı</p>
+                                    <div class="automation-stats">
+                                        <span>23 kişiye gönderildi</span>
+                                        <span>•</span>
+                                        <span>%76 açılma oranı</span>
+                                        <span>•</span>
+                                        <span>Son 30 gün</span>
+                                    </div>
+                                </div>
+                                <div class="automation-actions">
+                                    <button class="btn-sm btn-secondary" onclick="editAutomation(2)">
+                                        <i class="fas fa-edit"></i>
+                                        Düzenle
+                                    </button>
+                                    <button class="btn-sm btn-warning" onclick="pauseAutomation(2)">
+                                        <i class="fas fa-pause"></i>
+                                        Duraklat
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="automation-item paused">
+                                <div class="automation-info">
+                                    <div class="automation-header">
+                                        <h4>Doğum Günü Kutlaması</h4>
+                                        <span class="status-badge paused">Duraklatıldı</span>
+                                    </div>
+                                    <p>Müşterilerin doğum günlerinde özel tebrik mesajı</p>
+                                    <div class="automation-stats">
+                                        <span>12 kişiye gönderildi</span>
+                                        <span>•</span>
+                                        <span>%95 açılma oranı</span>
+                                        <span>•</span>
+                                        <span>Son 30 gün</span>
+                                    </div>
+                                </div>
+                                <div class="automation-actions">
+                                    <button class="btn-sm btn-secondary" onclick="editAutomation(3)">
+                                        <i class="fas fa-edit"></i>
+                                        Düzenle
+                                    </button>
+                                    <button class="btn-sm btn-success" onclick="resumeAutomation(3)">
+                                        <i class="fas fa-play"></i>
+                                        Başlat
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Analytics Section -->
+                <section id="analytics" class="content-section">
+                    <div class="section-header">
+                        <h2>Analitik</h2>
+                        <div class="date-range-picker">
+                            <select id="analyticsDateRange">
+                                <option value="7">Son 7 Gün</option>
+                                <option value="30" selected>Son 30 Gün</option>
+                                <option value="90">Son 3 Ay</option>
+                                <option value="365">Son 1 Yıl</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="analytics-container">
+                        <div class="analytics-overview">
+                            <div class="metric-card">
+                                <div class="metric-header">
+                                    <h3>Toplam Mesaj</h3>
+                                    <i class="fas fa-paper-plane"></i>
+                                </div>
+                                <div class="metric-value">12,547</div>
+                                <div class="metric-change positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    +23% (son ay)
+                                </div>
+                            </div>
+
+                            <div class="metric-card">
+                                <div class="metric-header">
+                                    <h3>Teslim Oranı</h3>
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="metric-value">98.5%</div>
+                                <div class="metric-change positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    +1.2% (son ay)
+                                </div>
+                            </div>
+
+                            <div class="metric-card">
+                                <div class="metric-header">
+                                    <h3>Okunma Oranı</h3>
+                                    <i class="fas fa-eye"></i>
+                                </div>
+                                <div class="metric-value">87.3%</div>
+                                <div class="metric-change negative">
+                                    <i class="fas fa-arrow-down"></i>
+                                    -2.1% (son ay)
+                                </div>
+                            </div>
+
+                            <div class="metric-card">
+                                <div class="metric-header">
+                                    <h3>Yanıt Oranı</h3>
+                                    <i class="fas fa-reply"></i>
+                                </div>
+                                <div class="metric-value">34.8%</div>
+                                <div class="metric-change positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    +5.7% (son ay)
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="analytics-charts">
+                            <div class="chart-container">
+                                <h3>Mesaj Gönderim Trendi</h3>
+                                <div class="chart-placeholder">
+                                    <canvas id="messagesTrendChart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="chart-container">
+                                <h3>Okunma vs Yanıt Oranları</h3>
+                                <div class="chart-placeholder">
+                                    <canvas id="responseRateChart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="analytics-tables">
+                            <div class="table-container">
+                                <h3>En İyi Performans Gösteren Şablonlar</h3>
+                                <table class="analytics-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Şablon Adı</th>
+                                            <th>Gönderim</th>
+                                            <th>Okunma</th>
+                                            <th>Yanıt</th>
+                                            <th>CVR</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Hoş Geldin Mesajı</td>
+                                            <td>1,247</td>
+                                            <td>92.3%</td>
+                                            <td>45.7%</td>
+                                            <td>23.1%</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Ürün Tanıtımı</td>
+                                            <td>856</td>
+                                            <td>87.1%</td>
+                                            <td>38.2%</td>
+                                            <td>18.5%</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Randevu Hatırlatması</td>
+                                            <td>634</td>
+                                            <td>95.8%</td>
+                                            <td>67.3%</td>
+                                            <td>34.2%</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="table-container">
+                                <h3>Gönderim Zamanı Analizi</h3>
+                                <table class="analytics-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Saat Aralığı</th>
+                                            <th>Gönderim</th>
+                                            <th>Okunma</th>
+                                            <th>Yanıt</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>09:00 - 12:00</td>
+                                            <td>3,247</td>
+                                            <td>89.2%</td>
+                                            <td>42.1%</td>
+                                        </tr>
+                                        <tr>
+                                            <td>12:00 - 15:00</td>
+                                            <td>2,856</td>
+                                            <td>91.5%</td>
+                                            <td>38.7%</td>
+                                        </tr>
+                                        <tr>
+                                            <td>15:00 - 18:00</td>
+                                            <td>4,127</td>
+                                            <td>85.3%</td>
+                                            <td>35.2%</td>
+                                        </tr>
+                                        <tr>
+                                            <td>18:00 - 21:00</td>
+                                            <td>2,317</td>
+                                            <td>93.7%</td>
+                                            <td>47.8%</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Settings Section -->
+                <section id="settings" class="content-section">
+                    <div class="section-header">
+                        <h2>Ayarlar</h2>
+                    </div>
+
+                    <div class="settings-container">
+                        <div class="settings-sidebar">
+                            <nav class="settings-nav">
+                                <ul>
+                                    <li class="settings-nav-item active" data-settings="general">
+                                        <i class="fas fa-cog"></i>
+                                        <span>Genel Ayarlar</span>
+                                    </li>
+                                    <li class="settings-nav-item" data-settings="whatsapp">
+                                        <i class="fab fa-whatsapp"></i>
+                                        <span>WhatsApp Bağlantısı</span>
+                                    </li>
+                                    <li class="settings-nav-item" data-settings="notifications">
+                                        <i class="fas fa-bell"></i>
+                                        <span>Bildirimler</span>
+                                    </li>
+                                    <li class="settings-nav-item" data-settings="templates">
+                                        <i class="fas fa-file-alt"></i>
+                                        <span>Şablon Ayarları</span>
+                                    </li>
+                                    <li class="settings-nav-item" data-settings="backup">
+                                        <i class="fas fa-database"></i>
+                                        <span>Yedekleme</span>
+                                    </li>
+                                    <li class="settings-nav-item" data-settings="account">
+                                        <i class="fas fa-user"></i>
+                                        <span>Hesap Ayarları</span>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+
+                        <div class="settings-content">
+                            <!-- General Settings -->
+                            <div class="settings-panel active" id="general-settings">
+                                <h3>Genel Ayarlar</h3>
+                                <div class="settings-form">
+                                    <div class="form-group">
+                                        <label>Şirket Adı</label>
+                                        <input type="text" value="WhatsApp CRM" placeholder="Şirket adınızı girin">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Saat Dilimi</label>
+                                        <select>
+                                            <option value="Europe/Istanbul" selected>Türkiye (GMT+3)</option>
+                                            <option value="Europe/London">İngiltere (GMT+0)</option>
+                                            <option value="America/New_York">New York (GMT-5)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Dil</label>
+                                        <select>
+                                            <option value="tr" selected>Türkçe</option>
+                                            <option value="en">English</option>
+                                            <option value="de">Deutsch</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-option">
+                                            <input type="checkbox" checked>
+                                            <span>Dark Mode</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- WhatsApp Settings -->
+                            <div class="settings-panel" id="whatsapp-settings">
+                                <h3>WhatsApp Bağlantısı</h3>
+                                <div class="connection-status">
+                                    <div class="status-indicator connected">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>Bağlı</span>
+                                    </div>
+                                    <p>WhatsApp Web ile bağlantı aktif</p>
+                                </div>
+                                <div class="settings-form">
+                                    <div class="form-group">
+                                        <label>WhatsApp Numara</label>
+                                        <input type="tel" value="+90 555 123 4567" readonly>
+                                        <small>Bağlı WhatsApp numarası</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>API Endpoint</label>
+                                        <input type="url" value="https://api.example.com/webhook" placeholder="Webhook URL'nizi girin">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-option">
+                                            <input type="checkbox" checked>
+                                            <span>Otomatik yeniden bağlanma</span>
+                                        </label>
+                                    </div>
+                                    <button class="btn-secondary">
+                                        <i class="fas fa-sync"></i>
+                                        Bağlantıyı Yenile
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Notification Settings -->
+                            <div class="settings-panel" id="notifications-settings">
+                                <h3>Bildirim Ayarları</h3>
+                                <div class="settings-form">
+                                    <div class="form-group">
+                                        <label class="checkbox-option">
+                                            <input type="checkbox" checked>
+                                            <span>Yeni mesaj bildirimleri</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-option">
+                                            <input type="checkbox" checked>
+                                            <span>Gönderim tamamlanma bildirimleri</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-option">
+                                            <input type="checkbox">
+                                            <span>Sistem bakım bildirimleri</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Email Bildirimleri</label>
+                                        <input type="email" placeholder="bildirim@sirket.com">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Template Settings -->
+                            <div class="settings-panel" id="templates-settings">
+                                <h3>Şablon Ayarları</h3>
+                                <div class="settings-form">
+                                    <div class="form-group">
+                                        <label class="checkbox-option">
+                                            <input type="checkbox" checked>
+                                            <span>Otomatik şablon önerisi</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Varsayılan İmza</label>
+                                        <textarea rows="3" placeholder="Mesajlarınızın sonuna eklenecek imza">
+En iyi dileklerle,
+WhatsApp CRM Ekibi</textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Değişken Format</label>
+                                        <select>
+                                            <option value="curly" selected>{değişken}</option>
+                                            <option value="square">[değişken]</option>
+                                            <option value="percent">%değişken%</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Backup Settings -->
+                            <div class="settings-panel" id="backup-settings">
+                                <h3>Yedekleme Ayarları</h3>
+                                <div class="settings-form">
+                                    <div class="form-group">
+                                        <label class="checkbox-option">
+                                            <input type="checkbox" checked>
+                                            <span>Otomatik yedekleme</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Yedekleme Sıklığı</label>
+                                        <select>
+                                            <option value="daily" selected>Günlük</option>
+                                            <option value="weekly">Haftalık</option>
+                                            <option value="monthly">Aylık</option>
+                                        </select>
+                                    </div>
+                                    <div class="backup-actions">
+                                        <button class="btn-primary">
+                                            <i class="fas fa-download"></i>
+                                            Yedek İndir
+                                        </button>
+                                        <button class="btn-secondary">
+                                            <i class="fas fa-upload"></i>
+                                            Yedek Yükle
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Account Settings -->
+                            <div class="settings-panel" id="account-settings">
+                                <h3>Hesap Ayarları</h3>
+                                <form class="settings-form" id="accountForm">
+                                    <div class="form-group">
+                                        <label>Ad Soyad</label>
+                                        <input type="text" value="Admin User" autocomplete="name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>E-posta</label>
+                                        <input type="email" value="admin@example.com" autocomplete="email">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Mevcut Şifre</label>
+                                        <input type="password" placeholder="Mevcut şifrenizi girin" autocomplete="current-password">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Yeni Şifre</label>
+                                        <input type="password" placeholder="Yeni şifrenizi girin" autocomplete="new-password">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Yeni Şifre (Tekrar)</label>
+                                        <input type="password" placeholder="Yeni şifrenizi tekrar girin" autocomplete="new-password">
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="settings-actions">
+                                <button class="btn-primary">
+                                    <i class="fas fa-save"></i>
+                                    Değişiklikleri Kaydet
+                                </button>
+                                <button class="btn-secondary">
+                                    <i class="fas fa-undo"></i>
+                                    Varsayılanlara Dön
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="contactModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Kişi Ekle</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="contactForm">
+                    <div class="form-group">
+                        <label>Ad Soyad</label>
+                        <input type="text" id="contactName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Telefon Numarası</label>
+                        <input type="tel" id="contactPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Grup</label>
+                        <select id="contactGroup">
+                            <option value="">Grup seçin...</option>
+                            <option value="customers">Müşteriler</option>
+                            <option value="leads">Potansiyel Müşteriler</option>
+                            <option value="partners">Partnerler</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Notlar</label>
+                        <textarea id="contactNotes"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancelContact">İptal</button>
+                <button class="btn-primary" id="saveContact">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="previewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Mesaj Önizlemesi</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="preview-phone">
+                    <div class="phone-header">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>WhatsApp</span>
+                    </div>
+                    <div class="chat-container">
+                        <div class="message-bubble sent">
+                            <div id="previewContent"></div>
+                            <div id="previewMedia"></div>
+                            <div class="message-time">14:30</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary modal-close">Kapat</button>
+                <button class="btn-primary" id="confirmSend">Gönderimi Onayla</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=1721248914561"></script>
+    <script src="ai-assistant.js"></script>
+    
+    <script>
+        // AI Test Function
+        function testAI() {
+            const input = document.getElementById('testMessage');
+            const results = document.getElementById('testResults');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message
+            const userMessage = document.createElement('div');
+            userMessage.className = 'test-message sent';
+            userMessage.innerHTML = `<strong>Sen:</strong> ${message}`;
+            results.appendChild(userMessage);
+            
+            // Simulate AI response
+            setTimeout(() => {
+                const aiMessage = document.createElement('div');
+                aiMessage.className = 'test-message received';
+                
+                let response = 'Merhaba! Size nasıl yardımcı olabilirim?';
+                
+                if (message.toLowerCase().includes('merhaba') || message.toLowerCase().includes('selam')) {
+                    response = 'Merhaba! Size nasıl yardımcı olabiliriz? Hizmetlerimiz hakkında kısa bir görüşme ayarlayalım mı?';
+                } else if (message.toLowerCase().includes('fiyat')) {
+                    response = 'Fiyatlarımız projenizin detaylarına göre değişkenlik gösteriyor. Detaylı bilgi için görüşelim. Bugün müsait misiniz?';
+                } else if (message.toLowerCase().includes('randevu')) {
+                    response = 'Tabii ki! Hangi gün ve saat sizin için uygun? 09:00-18:00 arası müsait saatlerim var.';
+                }
+                
+                aiMessage.innerHTML = `<strong>AI Asistan:</strong> ${response}`;
+                results.appendChild(aiMessage);
+                results.scrollTop = results.scrollHeight;
+            }, 1000);
+            
+            input.value = '';
+            results.scrollTop = results.scrollHeight;
+        }
+    </script>
+
+    <!-- WhatsApp QR Code Modal -->
+    <div id="qrModal" class="modal">
+        <div class="modal-content qr-modal">
+            <div class="modal-header">
+                <h3><i class="fab fa-whatsapp"></i> WhatsApp Web'e Bağlan</h3>
+                <button class="modal-close" onclick="crm.hideQRModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="qr-connection-steps">
+                    <div class="connection-step">
+                        <div class="step-number">1</div>
+                        <div class="step-text">
+                            <h4>Telefonunuzda WhatsApp'ı açın</h4>
+                            <p>WhatsApp uygulamasını telefonunuzda başlatın.</p>
+                        </div>
+                    </div>
+                    <div class="connection-step">
+                        <div class="step-number">2</div>
+                        <div class="step-text">
+                            <h4>Menü veya Ayarlar'a gidin</h4>
+                            <p>Android: ⋮ menüsü, iPhone: Alt sağdaki Ayarlar sekmesi</p>
+                        </div>
+                    </div>
+                    <div class="connection-step">
+                        <div class="step-number">3</div>
+                        <div class="step-text">
+                            <h4>Bağlı Cihazlar → QR Kod Tarayıcı</h4>
+                            <p>Aşağıdaki QR kodu telefonunuzla tarayın.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="qr-code-container">
+                    <div class="qr-code-wrapper">
+                        <div id="qrcode" class="qr-code">
+                            <!-- QR kod buraya gelecek -->
+                            <div class="qr-loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>QR kod oluşturuluyor...</p>
+                            </div>
+                        </div>
+                        <div class="qr-status" id="qrStatus">
+                            <i class="fas fa-qrcode"></i>
+                            <span>QR kodu telefonunuzla tarayın</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="connection-info">
+                    <div class="info-item">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Bağlantınız end-to-end şifrelidir</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-sync"></i>
+                        <span>QR kod 60 saniyede bir yenilenir</span>
+                    </div>
+                </div>
+
+                <div class="connection-actions">
+                    <button class="btn-secondary" onclick="crm.refreshQRCode()">
+                        <i class="fas fa-redo"></i>
+                        QR Kodu Yenile
+                    </button>
+                    <button class="btn-primary" onclick="crm.testConnection()" style="display: none;" id="testConnectionBtn">
+                        <i class="fas fa-check"></i>
+                        Bağlantıyı Test Et
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Status Toast -->
+    <div id="connectionToast" class="connection-toast">
+        <div class="toast-content">
+            <i class="fas fa-check-circle"></i>
+            <span>WhatsApp Web'e başarıyla bağlandı!</span>
+        </div>
+    </div>
+
+</body>
+</html>
