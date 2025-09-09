@@ -356,13 +356,19 @@ app.use((error, req, res, next) => {
 });
 
 // Start server
-app.listen(port, () => {
+const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+app.listen(port, host, () => {
     console.log(`🚀 Simple WhatsApp API Server çalışıyor!`);
-    console.log(`📱 Server URL: http://localhost:${port}`);
+    console.log(`📱 Server URL: http://${host}:${port}`);
     console.log(`🔑 API Key: 429683C4C977415CAAFCCE10F7D57E11`);
     console.log(`\n🎯 HAIRCHIEFS için hazır!`);
     console.log(`\n📋 Kullanım:`);
-    console.log(`   1. QR Code sayfası: http://localhost:3002`);
-    console.log(`   2. Toplu mesaj: http://localhost:3001`);
+    if (process.env.NODE_ENV === 'production') {
+        console.log(`   1. QR Code sayfası: /qr`);
+        console.log(`   2. Toplu mesaj: /bulk`);
+    } else {
+        console.log(`   1. QR Code sayfası: http://localhost:${port}/qr`);
+        console.log(`   2. Toplu mesaj: http://localhost:${port}/bulk`);
+    }
     console.log(`\n✨ Instance adı önerisi: "hairchiefs-wa"`);
 });
