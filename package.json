@@ -4,14 +4,15 @@
   "description": "WaPlus CRM - Professional WhatsApp Bulk Message System for HAIRCHIEFS",
   "main": "simple-whatsapp-server.js",
   "scripts": {
-    "start": "node --no-deprecation simple-whatsapp-server.js",
+    "start": "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true node --no-deprecation simple-whatsapp-server.js",
     "dev": "node --no-deprecation simple-whatsapp-server.js",
     "qr": "node simple-server.js",
     "bulk": "node bulk-server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "18.x",
+    "npm": "9.x"
   },
   "repository": {
     "type": "git",
