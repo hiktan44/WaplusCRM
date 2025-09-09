@@ -6,6 +6,7 @@
   "scripts": {
     "start": "NODE_ENV=production PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true node --no-deprecation simple-whatsapp-server.js",
     "dev": "node --no-deprecation simple-whatsapp-server.js",
+    "railway": "node --no-deprecation simple-whatsapp-server.js",
     "qr": "node simple-server.js",
     "bulk": "node bulk-server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
