@@ -148,10 +148,11 @@ app.get('/qr', (req, res) => {
                         
                         if (response.ok) {
                             currentInstance = instanceName;
-                            showStatus('Instance oluşturuluyor... QR kod bekleniyor...', 'blue');
-                            checkQRCode();
+                            showStatus('Instance oluşturuldu! QR kod hazırlanıyor...', 'blue');
+                            setTimeout(checkQRCode, 2000); // 2 saniye bekle
                         } else {
-                            showStatus('Hata: ' + data.error, 'red');
+                            console.error('Instance creation failed:', data);
+                            showStatus('Hata: ' + (data.error || 'Bilinmeyen hata') + '. ' + (data.solution || 'Sayfayı yenileyin.'), 'red');
                         }
                     } catch (error) {
                         showStatus('Bağlantı hatası: ' + error.message, 'red');
@@ -521,8 +522,17 @@ app.post('/instance/create', async (req, res) => {
             return res.status(400).json({ error: 'instanceName is required' });
         }
 
+        // For serverless, always recreate instance to avoid stale connections
         if (clients.has(instanceName)) {
-            return res.status(409).json({ error: 'Instance already exists' });
+            const existingInstance = clients.get(instanceName);
+            if (existingInstance.client) {
+                try {
+                    await existingInstance.client.destroy();
+                } catch (e) {
+                    console.log('Error destroying existing client:', e.message);
+                }
+            }
+            clients.delete(instanceName);
         }
 
         // Create WhatsApp client
@@ -587,18 +597,30 @@ app.post('/instance/create', async (req, res) => {
             console.error(`Auth failure for ${instanceName}:`, msg);
         });
 
-        // Initialize client
-        await client.initialize();
+        // Initialize client with timeout
+        setTimeout(async () => {
+            try {
+                await client.initialize();
+            } catch (err) {
+                console.error(`Client initialization failed for ${instanceName}:`, err.message);
+                instanceData.status = 'initialization_failed';
+                instanceData.error = err.message;
+            }
+        }, 100);
 
         res.json({
             message: 'Instance created successfully',
             instanceName: instanceName,
-            status: 'initializing'
+            status: 'initializing',
+            note: 'QR code will be ready in a few seconds'
         });
 
     } catch (error) {
         console.error('Instance creation error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ 
+            error: error.message,
+            solution: 'Try refreshing the page and creating instance again'
+        });
     }
 });
 
@@ -619,10 +641,19 @@ app.get('/instance/connect/:instanceName', (req, res) => {
             });
         }
 
+        if (instanceData.status === 'initialization_failed') {
+            return res.status(500).json({ 
+                error: 'Instance initialization failed',
+                details: instanceData.error || 'Unknown error',
+                solution: 'Please refresh the page and try creating a new instance'
+            });
+        }
+
         if (!instanceData.qrCode) {
             return res.json({ 
-                message: 'QR code not ready yet',
-                status: instanceData.status
+                message: 'QR code not ready yet. Please wait...',
+                status: instanceData.status,
+                note: 'QR code generation in progress'
             });
         }
 
