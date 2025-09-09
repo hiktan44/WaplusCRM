@@ -4,8 +4,8 @@
   "description": "WaPlus CRM - Professional WhatsApp Bulk Message System for HAIRCHIEFS",
   "main": "simple-whatsapp-server.js",
   "scripts": {
-    "start": "node simple-whatsapp-server.js",
-    "dev": "node simple-whatsapp-server.js",
+    "start": "node --no-deprecation simple-whatsapp-server.js",
+    "dev": "node --no-deprecation simple-whatsapp-server.js",
     "qr": "node simple-server.js",
     "bulk": "node bulk-server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
