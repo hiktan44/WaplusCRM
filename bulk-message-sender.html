@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WaPlus CRM - Toplu Mesaj Gönderimi</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-shadow {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .message-preview {
+            background: linear-gradient(145deg, #e5f3ff, #f0f9ff);
+            border-left: 4px solid #3b82f6;
+        }
+        .drag-area {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+        .drag-area.drag-over {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .success-toast {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        .error-toast {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white py-6">
+        <div class="container mx-auto px-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="bg-white bg-opacity-20 p-3 rounded-xl">
+                        <i class="fas fa-paper-plane text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold">WaPlus CRM</h1>
+                        <p class="text-blue-100">Toplu WhatsApp Mesaj Gönderimi</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-blue-100">Evolution API Integration</p>
+                    <p class="text-xs text-blue-200">v2.3.0</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-6 py-8">
+        <!-- Configuration Panel -->
+        <div class="grid lg:grid-cols-3 gap-6 mb-8">
+            <!-- WhatsApp Instance Configuration -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl card-shadow p-6">
+                    <div class="flex items-center mb-4">
+                        <i class="fas fa-cog text-blue-600 mr-3"></i>
+                        <h2 class="text-xl font-semibold text-gray-800">WhatsApp Instance</h2>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Instance Name</label>
+                            <input type="text" id="instanceName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="my-instance">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">API Base URL</label>
+                            <input type="text" id="apiBaseUrl" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value="http://localhost:8080" placeholder="http://localhost:8080">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">API Key (Opsiyonel)</label>
+                            <input type="password" id="apiKey" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Your API key">
+                        </div>
+
+                        <button id="testConnection" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200">
+                            <i class="fas fa-plug mr-2"></i>Bağlantıyı Test Et
+                        </button>
+                        
+                        <div id="connectionStatus" class="hidden p-3 rounded-lg text-sm">
+                            <i class="fas fa-circle mr-2"></i>
+                            <span id="connectionStatusText"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Import -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl card-shadow p-6">
+                    <div class="flex items-center mb-4">
+                        <i class="fas fa-users text-green-600 mr-3"></i>
+                        <h2 class="text-xl font-semibold text-gray-800">Kişi Listesi</h2>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <!-- File Upload -->
+                        <div>
+                            <h3 class="font-medium text-gray-700 mb-3">Dosya Yükle</h3>
+                            <div id="fileDropArea" class="drag-area p-6 text-center rounded-lg">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+                                <p class="text-gray-600 mb-2">CSV/Excel dosyasını sürükleyin veya seçin</p>
+                                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" class="hidden">
+                                <button onclick="document.getElementById('fileInput').click()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition duration-200">
+                                    <i class="fas fa-folder-open mr-2"></i>Dosya Seç
+                                </button>
+                            </div>
+                            
+                            <div id="fileInfo" class="hidden mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <p class="text-sm text-green-800">
+                                    <i class="fas fa-check-circle mr-2"></i>
+                                    <span id="fileName"></span> yüklendi
+                                </p>
+                                <p class="text-xs text-green-600 mt-1">
+                                    <span id="contactCount"></span> kişi bulundu
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Manual Entry -->
+                        <div>
+                            <h3 class="font-medium text-gray-700 mb-3">Manuel Giriş</h3>
+                            <textarea id="manualNumbers" class="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none" placeholder="Telefon numaralarını her satıra bir tane gelecek şekilde girin:&#10;+905551234567&#10;+905557654321&#10;05559876543"></textarea>
+                            <button id="addManualNumbers" class="w-full mt-3 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition duration-200">
+                                <i class="fas fa-plus mr-2"></i>Numaraları Ekle
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Contact List Preview -->
+                    <div id="contactPreview" class="hidden mt-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-medium text-gray-700">Kişi Listesi Önizleme</h3>
+                            <button id="clearContacts" class="text-red-600 hover:text-red-800 text-sm">
+                                <i class="fas fa-trash mr-1"></i>Temizle
+                            </button>
+                        </div>
+                        <div class="max-h-40 overflow-y-auto border rounded-lg">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">#</th>
+                                        <th class="px-3 py-2 text-left">Telefon</th>
+                                        <th class="px-3 py-2 text-left">İsim</th>
+                                        <th class="px-3 py-2 text-left">Durum</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="contactList">
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">
+                            Toplam: <span id="totalContacts" class="font-medium text-blue-600">0</span> kişi
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message Composition -->
+        <div class="grid lg:grid-cols-2 gap-6 mb-8">
+            <!-- Message Template -->
+            <div class="bg-white rounded-xl card-shadow p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-edit text-purple-600 mr-3"></i>
+                        <h2 class="text-xl font-semibold text-gray-800">Mesaj Şablonu</h2>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="saveTemplate" class="text-blue-600 hover:text-blue-800 text-sm">
+                            <i class="fas fa-save mr-1"></i>Kaydet
+                        </button>
+                        <button id="loadTemplate" class="text-green-600 hover:text-green-800 text-sm">
+                            <i class="fas fa-folder-open mr-1"></i>Yükle
+                        </button>
+                        <div class="relative">
+                            <button id="templateDropdown" class="text-purple-600 hover:text-purple-800 text-sm">
+                                <i class="fas fa-magic mr-1"></i>Hazır Şablonlar
+                            </button>
+                            <div id="templateMenu" class="hidden absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-48">
+                                <button onclick="loadHairchiefsTemplate1()" class="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50">🔥 Ortaklık Fırsatı</button>
+                                <button onclick="loadHairchiefsTemplate2()" class="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50">💰 Yatırım Daveti</button>
+                                <button onclick="loadHairchiefsTemplate3()" class="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50">⭐ Başarı Hikayesi</button>
+                                <button onclick="loadHairchiefsTemplate4()" class="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50">🎯 Kısa & Etkili</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Mesaj İçeriği</label>
+                        <textarea id="messageContent" class="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none" placeholder="Merhaba {name},&#10;&#10;Size özel bir teklifimiz var...&#10;&#10;Detaylar için: {phone}">💫 Merhaba {name}! ✨
+
+🔥 HAIRCHIEFS'ten size ÖZEL fırsat! 
+
+🎯 KUAFÖR ORTAKLIK PROGRAMI
+✅ %20'ye varan komisyon oranı
+✅ 50.000₺ kredi imkanı (6 taksit)
+✅ 8 yıllık deneyim & 30.000+ başarılı işlem
+✅ 4000 m² alan & modern teknoloji
+
+💰 Avrupa'nın EN BÜYÜK saç ekim kliniği ile iş ortaklığı fırsatı!
+
+📞 Hemen arayın: 0544 675 71 13
+🌐 www.hairchiefs.com
+
+⏰ Sınırlı süre! Kaçırmayın! 
+
+#SaçEkimi #İşOrtaklığı #Hairchiefs</textarea>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Değişkenler: {name}, {phone}, {email}, {custom1}, {custom2}
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Mesajlar Arası Bekleme (saniye)</label>
+                            <input type="number" id="messageDelay" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value="3" min="1" max="60">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Öğeler</label>
+                            <div class="flex space-x-2">
+                                <button id="enableEmoji" class="flex-1 bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition duration-200">
+                                    <i class="fas fa-smile"></i>
+                                </button>
+                                <button id="enableLinkPreview" class="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-200">
+                                    <i class="fas fa-link"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Preview -->
+            <div class="bg-white rounded-xl card-shadow p-6">
+                <div class="flex items-center mb-4">
+                    <i class="fas fa-eye text-indigo-600 mr-3"></i>
+                    <h2 class="text-xl font-semibold text-gray-800">Mesaj Önizleme</h2>
+                </div>
+
+                <div class="message-preview p-4 rounded-lg mb-4">
+                    <div class="flex items-start space-x-3">
+                        <div class="bg-green-500 rounded-full p-2">
+                            <i class="fas fa-user text-white text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm text-gray-600 mb-1">WhatsApp Mesajınız:</p>
+                            <div id="messagePreview" class="text-gray-800 whitespace-pre-wrap">
+                                Mesaj şablonunu yazın...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">Mesaj Uzunluğu:</span>
+                        <span id="messageLength" class="font-medium">0</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">Tahmini Süre:</span>
+                        <span id="estimatedTime" class="font-medium">0 dk</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">Link Önizleme:</span>
+                        <span id="linkPreviewStatus" class="font-medium">Kapalı</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Send Panel -->
+        <div class="bg-white rounded-xl card-shadow p-6">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center">
+                    <i class="fas fa-rocket text-red-600 mr-3"></i>
+                    <h2 class="text-xl font-semibold text-gray-800">Gönderim Kontrolü</h2>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-600">Toplam Gönderim:</p>
+                    <p class="text-2xl font-bold text-blue-600" id="totalMessages">0</p>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6 mb-6">
+                <!-- Send Options -->
+                <div>
+                    <h3 class="font-medium text-gray-700 mb-3">Gönderim Seçenekleri</h3>
+                    <div class="space-y-3">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="testMode" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                            <span class="text-sm text-gray-700">Test Modu (İlk 5 kişiye gönder)</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="skipInvalid" class="mr-2 h-4 w-4 text-blue-600 rounded" checked>
+                            <span class="text-sm text-gray-700">Geçersiz numaraları atla</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="pauseOnError" class="mr-2 h-4 w-4 text-blue-600 rounded" checked>
+                            <span class="text-sm text-gray-700">Hata durumunda duraklat</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div>
+                    <h3 class="font-medium text-gray-700 mb-3">Hızlı İşlemler</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="validateNumbers" class="bg-yellow-600 text-white py-2 px-3 rounded-lg hover:bg-yellow-700 transition duration-200 text-sm">
+                            <i class="fas fa-check-double mr-1"></i>Doğrula
+                        </button>
+                        <button id="clearAll" class="bg-red-600 text-white py-2 px-3 rounded-lg hover:bg-red-700 transition duration-200 text-sm">
+                            <i class="fas fa-trash mr-1"></i>Temizle
+                        </button>
+                        <button id="previewFirst" class="bg-indigo-600 text-white py-2 px-3 rounded-lg hover:bg-indigo-700 transition duration-200 text-sm">
+                            <i class="fas fa-eye mr-1"></i>Önizle
+                        </button>
+                        <button id="exportLog" class="bg-gray-600 text-white py-2 px-3 rounded-lg hover:bg-gray-700 transition duration-200 text-sm">
+                            <i class="fas fa-download mr-1"></i>Log Al
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Send Button -->
+            <div class="text-center">
+                <button id="startSending" disabled class="bg-gradient-to-r from-green-600 to-blue-600 text-white py-3 px-8 rounded-xl font-semibold hover:from-green-700 hover:to-blue-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-paper-plane mr-2"></i>Toplu Mesaj Gönderimini Başlat
+                </button>
+                <button id="pauseSending" class="hidden bg-yellow-600 text-white py-3 px-8 rounded-xl font-semibold hover:bg-yellow-700 transition duration-200 ml-4">
+                    <i class="fas fa-pause mr-2"></i>Duraklat
+                </button>
+                <button id="stopSending" class="hidden bg-red-600 text-white py-3 px-8 rounded-xl font-semibold hover:bg-red-700 transition duration-200 ml-4">
+                    <i class="fas fa-stop mr-2"></i>Durdur
+                </button>
+            </div>
+        </div>
+
+        <!-- Progress Panel -->
+        <div id="progressPanel" class="hidden bg-white rounded-xl card-shadow p-6 mt-6">
+            <div class="flex items-center mb-4">
+                <i class="fas fa-chart-line text-blue-600 mr-3"></i>
+                <h2 class="text-xl font-semibold text-gray-800">Gönderim İlerlemesi</h2>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="mb-6">
+                <div class="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>İlerleme</span>
+                    <span id="progressText">0 / 0</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3">
+                    <div id="progressBar" class="bg-gradient-to-r from-blue-600 to-green-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="text-center p-3 bg-green-50 rounded-lg">
+                    <div class="text-2xl font-bold text-green-600" id="successCount">0</div>
+                    <div class="text-sm text-green-600">Başarılı</div>
+                </div>
+                <div class="text-center p-3 bg-red-50 rounded-lg">
+                    <div class="text-2xl font-bold text-red-600" id="errorCount">0</div>
+                    <div class="text-sm text-red-600">Hata</div>
+                </div>
+                <div class="text-center p-3 bg-yellow-50 rounded-lg">
+                    <div class="text-2xl font-bold text-yellow-600" id="remainingCount">0</div>
+                    <div class="text-sm text-yellow-600">Kalan</div>
+                </div>
+                <div class="text-center p-3 bg-blue-50 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600" id="estimatedTimeRemaining">0m</div>
+                    <div class="text-sm text-blue-600">Kalan Süre</div>
+                </div>
+            </div>
+
+            <!-- Live Log -->
+            <div>
+                <h3 class="font-medium text-gray-700 mb-3">Canlı Log</h3>
+                <div id="liveLog" class="bg-gray-900 text-green-400 p-4 rounded-lg h-40 overflow-y-auto text-sm font-mono">
+                    <div>Sistem hazır...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="fixed top-4 right-4 space-y-2 z-50"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        // Global variables
+        let contacts = [];
+        let sendingInProgress = false;
+        let sendingPaused = false;
+        let currentIndex = 0;
+        let successCount = 0;
+        let errorCount = 0;
+        let sendingStats = {
+            startTime: null,
+            totalSent: 0,
+            errors: []
+        };
+
+        // DOM elements
+        const elements = {
+            instanceName: document.getElementById('instanceName'),
+            apiBaseUrl: document.getElementById('apiBaseUrl'),
+            apiKey: document.getElementById('apiKey'),
+            testConnection: document.getElementById('testConnection'),
+            connectionStatus: document.getElementById('connectionStatus'),
+            connectionStatusText: document.getElementById('connectionStatusText'),
+            fileDropArea: document.getElementById('fileDropArea'),
+            fileInput: document.getElementById('fileInput'),
+            fileInfo: document.getElementById('fileInfo'),
+            fileName: document.getElementById('fileName'),
+            contactCount: document.getElementById('contactCount'),
+            manualNumbers: document.getElementById('manualNumbers'),
+            addManualNumbers: document.getElementById('addManualNumbers'),
+            contactPreview: document.getElementById('contactPreview'),
+            contactList: document.getElementById('contactList'),
+            totalContacts: document.getElementById('totalContacts'),
+            clearContacts: document.getElementById('clearContacts'),
+            messageContent: document.getElementById('messageContent'),
+            messageDelay: document.getElementById('messageDelay'),
+            enableEmoji: document.getElementById('enableEmoji'),
+            enableLinkPreview: document.getElementById('enableLinkPreview'),
+            messagePreview: document.getElementById('messagePreview'),
+            messageLength: document.getElementById('messageLength'),
+            estimatedTime: document.getElementById('estimatedTime'),
+            linkPreviewStatus: document.getElementById('linkPreviewStatus'),
+            totalMessages: document.getElementById('totalMessages'),
+            testMode: document.getElementById('testMode'),
+            skipInvalid: document.getElementById('skipInvalid'),
+            pauseOnError: document.getElementById('pauseOnError'),
+            validateNumbers: document.getElementById('validateNumbers'),
+            clearAll: document.getElementById('clearAll'),
+            previewFirst: document.getElementById('previewFirst'),
+            exportLog: document.getElementById('exportLog'),
+            startSending: document.getElementById('startSending'),
+            pauseSending: document.getElementById('pauseSending'),
+            stopSending: document.getElementById('stopSending'),
+            progressPanel: document.getElementById('progressPanel'),
+            progressText: document.getElementById('progressText'),
+            progressBar: document.getElementById('progressBar'),
+            successCount: document.getElementById('successCount'),
+            errorCount: document.getElementById('errorCount'),
+            remainingCount: document.getElementById('remainingCount'),
+            estimatedTimeRemaining: document.getElementById('estimatedTimeRemaining'),
+            liveLog: document.getElementById('liveLog'),
+            saveTemplate: document.getElementById('saveTemplate'),
+            loadTemplate: document.getElementById('loadTemplate')
+        };
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            loadSavedSettings();
+            updateUI();
+        });
+
+        function initializeEventListeners() {
+            // Connection test
+            elements.testConnection.addEventListener('click', testConnection);
+
+            // File upload
+            elements.fileInput.addEventListener('change', handleFileUpload);
+            elements.fileDropArea.addEventListener('dragover', handleDragOver);
+            elements.fileDropArea.addEventListener('drop', handleDrop);
+            elements.addManualNumbers.addEventListener('click', addManualNumbers);
+
+            // Contact management
+            elements.clearContacts.addEventListener('click', clearContacts);
+
+            // Message composition
+            elements.messageContent.addEventListener('input', updateMessagePreview);
+            elements.messageDelay.addEventListener('change', updateEstimatedTime);
+            elements.enableLinkPreview.addEventListener('click', toggleLinkPreview);
+
+            // Templates
+            elements.saveTemplate.addEventListener('click', saveTemplate);
+            elements.loadTemplate.addEventListener('click', loadTemplate);
+            
+            // Template dropdown
+            document.getElementById('templateDropdown').addEventListener('click', function() {
+                document.getElementById('templateMenu').classList.toggle('hidden');
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('#templateDropdown') && !e.target.closest('#templateMenu')) {
+                    document.getElementById('templateMenu').classList.add('hidden');
+                }
+            });
+
+            // Sending controls
+            elements.validateNumbers.addEventListener('click', validateNumbers);
+            elements.clearAll.addEventListener('click', clearAll);
+            elements.previewFirst.addEventListener('click', previewFirst);
+            elements.exportLog.addEventListener('click', exportLog);
+            elements.startSending.addEventListener('click', startSending);
+            elements.pauseSending.addEventListener('click', pauseSending);
+            elements.stopSending.addEventListener('click', stopSending);
+
+            // Update UI on changes
+            elements.testMode.addEventListener('change', updateUI);
+        }
+
+        function loadSavedSettings() {
+            const saved = localStorage.getItem('waPlusCRM_settings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                elements.instanceName.value = settings.instanceName || '';
+                elements.apiBaseUrl.value = settings.apiBaseUrl || 'http://localhost:8080';
+                elements.apiKey.value = settings.apiKey || '';
+                elements.messageDelay.value = settings.messageDelay || 3;
+            }
+        }
+
+        function saveSettings() {
+            const settings = {
+                instanceName: elements.instanceName.value,
+                apiBaseUrl: elements.apiBaseUrl.value,
+                apiKey: elements.apiKey.value,
+                messageDelay: elements.messageDelay.value
+            };
+            localStorage.setItem('waPlusCRM_settings', JSON.stringify(settings));
+        }
+
+        async function testConnection() {
+            const instanceName = elements.instanceName.value.trim();
+            const apiBaseUrl = elements.apiBaseUrl.value.trim();
+
+            if (!instanceName || !apiBaseUrl) {
+                showToast('Instance name ve API URL gerekli!', 'error');
+                return;
+            }
+
+            elements.testConnection.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Test ediliyor...';
+            elements.testConnection.disabled = true;
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/instance/fetchInstances`, {
+                    headers: getHeaders()
+                });
+
+                if (response.ok) {
+                    const instances = await response.json();
+                    const instanceExists = instances.some(inst => inst.instanceName === instanceName);
+                    
+                    if (instanceExists) {
+                        showConnectionStatus('Bağlantı başarılı! Instance bulundu.', 'success');
+                        saveSettings();
+                    } else {
+                        showConnectionStatus('Bağlantı başarılı, ancak instance bulunamadı.', 'warning');
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                showConnectionStatus(`Bağlantı hatası: ${error.message}`, 'error');
+            } finally {
+                elements.testConnection.innerHTML = '<i class="fas fa-plug mr-2"></i>Bağlantıyı Test Et';
+                elements.testConnection.disabled = false;
+            }
+        }
+
+        function showConnectionStatus(message, type) {
+            elements.connectionStatus.classList.remove('hidden');
+            elements.connectionStatus.className = `p-3 rounded-lg text-sm ${
+                type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+                type === 'warning' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
+                'bg-red-50 text-red-800 border border-red-200'
+            }`;
+            elements.connectionStatusText.textContent = message;
+        }
+
+        function getHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            if (elements.apiKey.value.trim()) {
+                headers['apikey'] = elements.apiKey.value.trim();
+            }
+            return headers;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            elements.fileDropArea.classList.add('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            elements.fileDropArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload({ target: { files } });
+            }
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            if (!['csv', 'xlsx', 'xls'].includes(fileExtension)) {
+                showToast('Desteklenen formatlar: CSV, XLSX, XLS', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    let data;
+                    if (fileExtension === 'csv') {
+                        data = parseCSV(e.target.result);
+                    } else {
+                        const workbook = XLSX.read(e.target.result, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                    }
+                    
+                    processFileData(data, file.name);
+                } catch (error) {
+                    showToast('Dosya işlenirken hata oluştu: ' + error.message, 'error');
+                }
+            };
+
+            if (fileExtension === 'csv') {
+                reader.readAsText(file);
+            } else {
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            return lines.map(line => line.split(',').map(cell => cell.trim()));
+        }
+
+        function processFileData(data, fileName) {
+            if (data.length < 2) {
+                showToast('Dosyada yeterli veri bulunamadı', 'error');
+                return;
+            }
+
+            const headers = data[0].map(h => h.toLowerCase());
+            const phoneIndex = headers.findIndex(h => h.includes('phone') || h.includes('telefon') || h.includes('tel') || h.includes('numara'));
+            const nameIndex = headers.findIndex(h => h.includes('name') || h.includes('isim') || h.includes('ad'));
+            const emailIndex = headers.findIndex(h => h.includes('email') || h.includes('eposta') || h.includes('mail'));
+
+            if (phoneIndex === -1) {
+                showToast('Telefon numarası sütunu bulunamadı. Sütun başlığında "phone", "telefon" veya "numara" kelimesi olmalı.', 'error');
+                return;
+            }
+
+            const newContacts = data.slice(1)
+                .filter(row => row[phoneIndex] && row[phoneIndex].toString().trim())
+                .map((row, index) => ({
+                    id: Date.now() + index,
+                    phone: cleanPhoneNumber(row[phoneIndex].toString().trim()),
+                    name: nameIndex >= 0 ? row[nameIndex]?.toString().trim() || '' : '',
+                    email: emailIndex >= 0 ? row[emailIndex]?.toString().trim() || '' : '',
+                    custom1: '',
+                    custom2: '',
+                    status: 'pending',
+                    source: 'file'
+                }))
+                .filter(contact => contact.phone);
+
+            contacts = [...contacts, ...newContacts];
+            
+            elements.fileName.textContent = fileName;
+            elements.contactCount.textContent = newContacts.length;
+            elements.fileInfo.classList.remove('hidden');
+            
+            updateContactPreview();
+            updateUI();
+            showToast(`${newContacts.length} kişi başarıyla yüklendi`, 'success');
+        }
+
+        function cleanPhoneNumber(phone) {
+            // Remove all non-digit characters except +
+            let cleaned = phone.replace(/[^\d+]/g, '');
+            
+            // If it starts with 0, replace with +90
+            if (cleaned.startsWith('0')) {
+                cleaned = '+90' + cleaned.substring(1);
+            }
+            // If it doesn't start with +, add +90
+            else if (!cleaned.startsWith('+')) {
+                cleaned = '+90' + cleaned;
+            }
+            
+            return cleaned;
+        }
+
+        function addManualNumbers() {
+            const text = elements.manualNumbers.value.trim();
+            if (!text) {
+                showToast('Lütfen telefon numaralarını girin', 'error');
+                return;
+            }
+
+            const lines = text.split('\n').filter(line => line.trim());
+            const newContacts = lines.map((line, index) => {
+                const phone = cleanPhoneNumber(line.trim());
+                return {
+                    id: Date.now() + index,
+                    phone: phone,
+                    name: '',
+                    email: '',
+                    custom1: '',
+                    custom2: '',
+                    status: 'pending',
+                    source: 'manual'
+                };
+            });
+
+            contacts = [...contacts, ...newContacts];
+            elements.manualNumbers.value = '';
+            
+            updateContactPreview();
+            updateUI();
+            showToast(`${newContacts.length} kişi eklendi`, 'success');
+        }
+
+        function updateContactPreview() {
+            if (contacts.length === 0) {
+                elements.contactPreview.classList.add('hidden');
+                return;
+            }
+
+            elements.contactPreview.classList.remove('hidden');
+            elements.contactList.innerHTML = '';
+
+            contacts.slice(0, 50).forEach((contact, index) => {
+                const row = document.createElement('tr');
+                row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-3 py-2">${index + 1}</td>
+                    <td class="px-3 py-2 font-mono text-sm">${contact.phone}</td>
+                    <td class="px-3 py-2">${contact.name || '-'}</td>
+                    <td class="px-3 py-2">
+                        <span class="px-2 py-1 text-xs rounded-full ${getStatusColor(contact.status)}">
+                            ${getStatusText(contact.status)}
+                        </span>
+                    </td>
+                `;
+                elements.contactList.appendChild(row);
+            });
+
+            if (contacts.length > 50) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="4" class="px-3 py-2 text-center text-gray-500">... ve ${contacts.length - 50} kişi daha</td>`;
+                elements.contactList.appendChild(row);
+            }
+
+            elements.totalContacts.textContent = contacts.length;
+        }
+
+        function getStatusColor(status) {
+            switch (status) {
+                case 'pending': return 'bg-gray-100 text-gray-800';
+                case 'sent': return 'bg-green-100 text-green-800';
+                case 'error': return 'bg-red-100 text-red-800';
+                case 'invalid': return 'bg-yellow-100 text-yellow-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function getStatusText(status) {
+            switch (status) {
+                case 'pending': return 'Bekliyor';
+                case 'sent': return 'Gönderildi';
+                case 'error': return 'Hata';
+                case 'invalid': return 'Geçersiz';
+                default: return 'Bilinmiyor';
+            }
+        }
+
+        function clearContacts() {
+            if (confirm('Tüm kişi listesini temizlemek istediğinizden emin misiniz?')) {
+                contacts = [];
+                elements.contactPreview.classList.add('hidden');
+                elements.fileInfo.classList.add('hidden');
+                updateUI();
+                showToast('Kişi listesi temizlendi', 'success');
+            }
+        }
+
+        function updateMessagePreview() {
+            const template = elements.messageContent.value;
+            const sampleContact = contacts.length > 0 ? contacts[0] : {
+                name: 'Ahmet Yılmaz',
+                phone: '+905551234567',
+                email: 'ahmet@example.com',
+                custom1: 'Özel Alan 1',
+                custom2: 'Özel Alan 2'
+            };
+
+            const preview = template
+                .replace(/{name}/g, sampleContact.name || 'Değerli Müşteri')
+                .replace(/{phone}/g, sampleContact.phone)
+                .replace(/{email}/g, sampleContact.email || 'email@example.com')
+                .replace(/{custom1}/g, sampleContact.custom1 || 'Değer 1')
+                .replace(/{custom2}/g, sampleContact.custom2 || 'Değer 2');
+
+            elements.messagePreview.textContent = preview || 'Mesaj şablonunu yazın...';
+            elements.messageLength.textContent = template.length;
+            
+            updateEstimatedTime();
+        }
+
+        function updateEstimatedTime() {
+            const messageCount = elements.testMode.checked ? Math.min(5, contacts.length) : contacts.length;
+            const delay = parseInt(elements.messageDelay.value) || 3;
+            const totalTime = (messageCount * delay) / 60; // dakika cinsinden
+            
+            elements.estimatedTime.textContent = totalTime < 1 ? 
+                `${Math.round(totalTime * 60)} saniye` : 
+                `${totalTime.toFixed(1)} dk`;
+        }
+
+        function toggleLinkPreview() {
+            const isEnabled = elements.enableLinkPreview.classList.contains('bg-blue-600');
+            if (isEnabled) {
+                elements.enableLinkPreview.classList.remove('bg-blue-600');
+                elements.enableLinkPreview.classList.add('bg-gray-400');
+                elements.linkPreviewStatus.textContent = 'Kapalı';
+            } else {
+                elements.enableLinkPreview.classList.remove('bg-gray-400');
+                elements.enableLinkPreview.classList.add('bg-blue-600');
+                elements.linkPreviewStatus.textContent = 'Açık';
+            }
+        }
+
+        function saveTemplate() {
+            const template = {
+                content: elements.messageContent.value,
+                delay: elements.messageDelay.value,
+                linkPreview: elements.enableLinkPreview.classList.contains('bg-blue-600'),
+                timestamp: new Date().toISOString()
+            };
+
+            const templateName = prompt('Şablon adı:') || 'template_' + Date.now();
+            localStorage.setItem(`waPlusCRM_template_${templateName}`, JSON.stringify(template));
+            showToast('Şablon kaydedildi', 'success');
+        }
+
+        function loadTemplate() {
+            const templates = Object.keys(localStorage)
+                .filter(key => key.startsWith('waPlusCRM_template_'))
+                .map(key => ({
+                    key,
+                    name: key.replace('waPlusCRM_template_', ''),
+                    data: JSON.parse(localStorage.getItem(key))
+                }));
+
+            if (templates.length === 0) {
+                showToast('Kaydedilmiş şablon bulunamadı', 'error');
+                return;
+            }
+
+            const templateNames = templates.map(t => t.name);
+            const selected = prompt('Yüklenecek şablonu seçin:\n' + templateNames.join('\n'));
+
+            const template = templates.find(t => t.name === selected);
+            if (template) {
+                elements.messageContent.value = template.data.content;
+                elements.messageDelay.value = template.data.delay;
+                
+                if (template.data.linkPreview) {
+                    elements.enableLinkPreview.classList.remove('bg-gray-400');
+                    elements.enableLinkPreview.classList.add('bg-blue-600');
+                    elements.linkPreviewStatus.textContent = 'Açık';
+                } else {
+                    elements.enableLinkPreview.classList.remove('bg-blue-600');
+                    elements.enableLinkPreview.classList.add('bg-gray-400');
+                    elements.linkPreviewStatus.textContent = 'Kapalı';
+                }
+                
+                updateMessagePreview();
+                showToast('Şablon yüklendi', 'success');
+            }
+        }
+
+        async function validateNumbers() {
+            if (contacts.length === 0) {
+                showToast('Doğrulanacak numara bulunamadı', 'error');
+                return;
+            }
+
+            elements.validateNumbers.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Doğrulanıyor...';
+            elements.validateNumbers.disabled = true;
+
+            let validCount = 0;
+            let invalidCount = 0;
+
+            for (let contact of contacts) {
+                // Basit validasyon
+                const phoneRegex = /^\+[1-9]\d{10,14}$/;
+                if (phoneRegex.test(contact.phone)) {
+                    contact.status = 'pending';
+                    validCount++;
+                } else {
+                    contact.status = 'invalid';
+                    invalidCount++;
+                }
+                
+                // UI'yi güncelle
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+
+            updateContactPreview();
+            elements.validateNumbers.innerHTML = '<i class="fas fa-check-double mr-1"></i>Doğrula';
+            elements.validateNumbers.disabled = false;
+
+            showToast(`${validCount} geçerli, ${invalidCount} geçersiz numara`, 'success');
+        }
+
+        function clearAll() {
+            if (confirm('Tüm verileri temizlemek istediğinizden emin misiniz?')) {
+                contacts = [];
+                elements.messageContent.value = '';
+                elements.manualNumbers.value = '';
+                elements.contactPreview.classList.add('hidden');
+                elements.fileInfo.classList.add('hidden');
+                elements.progressPanel.classList.add('hidden');
+                
+                // Reset stats
+                successCount = 0;
+                errorCount = 0;
+                currentIndex = 0;
+                sendingInProgress = false;
+                sendingPaused = false;
+                
+                updateUI();
+                showToast('Tüm veriler temizlendi', 'success');
+            }
+        }
+
+        function previewFirst() {
+            if (contacts.length === 0) {
+                showToast('Önizlenecek kişi bulunamadı', 'error');
+                return;
+            }
+
+            const contact = contacts[0];
+            const message = elements.messageContent.value
+                .replace(/{name}/g, contact.name || 'Değerli Müşteri')
+                .replace(/{phone}/g, contact.phone)
+                .replace(/{email}/g, contact.email || '')
+                .replace(/{custom1}/g, contact.custom1 || '')
+                .replace(/{custom2}/g, contact.custom2 || '');
+
+            alert(`Önizleme:\n\nAlıcı: ${contact.phone}\nMesaj:\n${message}`);
+        }
+
+        function exportLog() {
+            const log = {
+                timestamp: new Date().toISOString(),
+                settings: {
+                    instanceName: elements.instanceName.value,
+                    messageDelay: elements.messageDelay.value,
+                    testMode: elements.testMode.checked
+                },
+                stats: sendingStats,
+                contacts: contacts
+            };
+
+            const blob = new Blob([JSON.stringify(log, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `waplus_log_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function startSending() {
+            if (!validateSendingRequirements()) return;
+
+            // Initialize sending
+            sendingInProgress = true;
+            sendingPaused = false;
+            currentIndex = 0;
+            successCount = 0;
+            errorCount = 0;
+            sendingStats = {
+                startTime: new Date(),
+                totalSent: 0,
+                errors: []
+            };
+
+            // Show progress panel
+            elements.progressPanel.classList.remove('hidden');
+            updateSendingUI(true);
+            
+            // Filter contacts based on settings
+            const contactsToSend = getContactsToSend();
+            
+            logMessage(`Gönderim başladı - Toplam ${contactsToSend.length} kişi`);
+            
+            // Start sending process
+            await processSending(contactsToSend);
+        }
+
+        function validateSendingRequirements() {
+            if (contacts.length === 0) {
+                showToast('Gönderilecek kişi bulunamadı', 'error');
+                return false;
+            }
+
+            if (!elements.messageContent.value.trim()) {
+                showToast('Mesaj içeriği boş olamaz', 'error');
+                return false;
+            }
+
+            if (!elements.instanceName.value.trim()) {
+                showToast('Instance name gerekli', 'error');
+                return false;
+            }
+
+            if (!elements.apiBaseUrl.value.trim()) {
+                showToast('API base URL gerekli', 'error');
+                return false;
+            }
+
+            return true;
+        }
+
+        function getContactsToSend() {
+            let contactsToSend = [...contacts];
+
+            // Skip invalid numbers if enabled
+            if (elements.skipInvalid.checked) {
+                contactsToSend = contactsToSend.filter(c => c.status !== 'invalid');
+            }
+
+            // Test mode - only first 5
+            if (elements.testMode.checked) {
+                contactsToSend = contactsToSend.slice(0, 5);
+            }
+
+            return contactsToSend;
+        }
+
+        async function processSending(contactsToSend) {
+            const delay = parseInt(elements.messageDelay.value) * 1000;
+            
+            for (let i = currentIndex; i < contactsToSend.length && sendingInProgress; i++) {
+                if (sendingPaused) {
+                    currentIndex = i;
+                    break;
+                }
+
+                const contact = contactsToSend[i];
+                currentIndex = i;
+                
+                try {
+                    await sendMessage(contact);
+                    successCount++;
+                    contact.status = 'sent';
+                    logMessage(`✓ ${contact.phone} - Gönderildi`, 'success');
+                } catch (error) {
+                    errorCount++;
+                    contact.status = 'error';
+                    sendingStats.errors.push({
+                        contact: contact.phone,
+                        error: error.message,
+                        timestamp: new Date()
+                    });
+                    logMessage(`✗ ${contact.phone} - Hata: ${error.message}`, 'error');
+                    
+                    if (elements.pauseOnError.checked) {
+                        pauseSending();
+                        break;
+                    }
+                }
+
+                updateProgress(i + 1, contactsToSend.length);
+                updateContactPreview();
+
+                // Delay between messages
+                if (i < contactsToSend.length - 1 && sendingInProgress && !sendingPaused) {
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+
+            if (sendingInProgress && !sendingPaused) {
+                // Sending completed
+                stopSending();
+                logMessage(`Gönderim tamamlandı - ${successCount} başarılı, ${errorCount} hata`);
+                showToast(`Gönderim tamamlandı! ${successCount} başarılı, ${errorCount} hata`, 'success');
+            }
+        }
+
+        async function sendMessage(contact) {
+            const instanceName = elements.instanceName.value.trim();
+            const apiBaseUrl = elements.apiBaseUrl.value.trim();
+            
+            const message = elements.messageContent.value
+                .replace(/{name}/g, contact.name || 'Değerli Müşteri')
+                .replace(/{phone}/g, contact.phone)
+                .replace(/{email}/g, contact.email || '')
+                .replace(/{custom1}/g, contact.custom1 || '')
+                .replace(/{custom2}/g, contact.custom2 || '');
+
+            const requestBody = {
+                number: contact.phone,
+                text: message,
+                linkPreview: elements.enableLinkPreview.classList.contains('bg-blue-600')
+            };
+
+            const response = await fetch(`${apiBaseUrl}/message/sendText/${instanceName}`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const result = await response.json();
+            sendingStats.totalSent++;
+            
+            return result;
+        }
+
+        function pauseSending() {
+            sendingPaused = !sendingPaused;
+            if (sendingPaused) {
+                logMessage('Gönderim duraklatıldı');
+                elements.pauseSending.innerHTML = '<i class="fas fa-play mr-2"></i>Devam Et';
+                elements.pauseSending.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+                elements.pauseSending.classList.add('bg-green-600', 'hover:bg-green-700');
+            } else {
+                logMessage('Gönderim devam ediyor');
+                elements.pauseSending.innerHTML = '<i class="fas fa-pause mr-2"></i>Duraklat';
+                elements.pauseSending.classList.remove('bg-green-600', 'hover:bg-green-700');
+                elements.pauseSending.classList.add('bg-yellow-600', 'hover:bg-yellow-700');
+                
+                // Resume sending
+                const contactsToSend = getContactsToSend();
+                processSending(contactsToSend);
+            }
+        }
+
+        function stopSending() {
+            sendingInProgress = false;
+            sendingPaused = false;
+            updateSendingUI(false);
+            logMessage('Gönderim durduruldu');
+        }
+
+        function updateProgress(current, total) {
+            const percentage = (current / total) * 100;
+            elements.progressBar.style.width = percentage + '%';
+            elements.progressText.textContent = `${current} / ${total}`;
+            elements.successCount.textContent = successCount;
+            elements.errorCount.textContent = errorCount;
+            elements.remainingCount.textContent = total - current;
+
+            // Calculate estimated time remaining
+            const elapsed = Date.now() - sendingStats.startTime.getTime();
+            const avgTimePerMessage = elapsed / current;
+            const remainingTime = (avgTimePerMessage * (total - current)) / 1000 / 60;
+            elements.estimatedTimeRemaining.textContent = remainingTime > 1 ? 
+                Math.round(remainingTime) + 'm' : 
+                Math.round(remainingTime * 60) + 's';
+        }
+
+        function updateSendingUI(isSending) {
+            elements.startSending.classList.toggle('hidden', isSending);
+            elements.pauseSending.classList.toggle('hidden', !isSending);
+            elements.stopSending.classList.toggle('hidden', !isSending);
+            
+            if (!isSending) {
+                elements.pauseSending.innerHTML = '<i class="fas fa-pause mr-2"></i>Duraklat';
+                elements.pauseSending.classList.remove('bg-green-600', 'hover:bg-green-700');
+                elements.pauseSending.classList.add('bg-yellow-600', 'hover:bg-yellow-700');
+            }
+        }
+
+        function logMessage(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('tr-TR');
+            const logElement = document.createElement('div');
+            logElement.className = type === 'error' ? 'text-red-400' : 
+                                  type === 'success' ? 'text-green-400' : 
+                                  'text-gray-300';
+            logElement.textContent = `[${timestamp}] ${message}`;
+            
+            elements.liveLog.appendChild(logElement);
+            elements.liveLog.scrollTop = elements.liveLog.scrollHeight;
+
+            // Keep only last 100 messages
+            const children = elements.liveLog.children;
+            if (children.length > 100) {
+                elements.liveLog.removeChild(children[0]);
+            }
+        }
+
+        function updateUI() {
+            const hasContacts = contacts.length > 0;
+            const hasMessage = elements.messageContent.value.trim().length > 0;
+            const hasInstance = elements.instanceName.value.trim().length > 0;
+            const hasApiUrl = elements.apiBaseUrl.value.trim().length > 0;
+
+            elements.startSending.disabled = !(hasContacts && hasMessage && hasInstance && hasApiUrl) || sendingInProgress;
+            
+            const messageCount = elements.testMode.checked ? Math.min(5, contacts.length) : contacts.length;
+            elements.totalMessages.textContent = messageCount;
+
+            updateMessagePreview();
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `${type === 'success' ? 'success-toast' : 
+                              type === 'error' ? 'error-toast' : 
+                              'bg-blue-600'} text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-3 transform transition-all duration-300 translate-x-full`;
+            
+            toast.innerHTML = `
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 
+                              type === 'error' ? 'fa-exclamation-circle' : 
+                              'fa-info-circle'}"></i>
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+
+            document.getElementById('toastContainer').appendChild(toast);
+
+            // Animate in
+            setTimeout(() => toast.classList.remove('translate-x-full'), 100);
+
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.add('translate-x-full');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // HAIRCHIEFS Hazır Şablonlar
+        function loadHairchiefsTemplate1() {
+            elements.messageContent.value = `💫 Merhaba {name}! ✨
+
+🔥 HAIRCHIEFS'ten size ÖZEL fırsat! 
+
+🎯 KUAFÖR ORTAKLIK PROGRAMI
+✅ %20'ye varan komisyon oranı
+✅ 50.000₺ kredi imkanı (6 taksit)
+✅ 8 yıllık deneyim & 30.000+ başarılı işlem
+✅ 4000 m² alan & modern teknoloji
+
+💰 Avrupa'nın EN BÜYÜK saç ekim kliniği ile iş ortaklığı fırsatı!
+
+📞 Hemen arayın: 0544 675 71 13
+🌐 www.hairchiefs.com
+
+⏰ Sınırlı süre! Kaçırmayın! 
+
+#SaçEkimi #İşOrtaklığı #Hairchiefs`;
+            document.getElementById('templateMenu').classList.add('hidden');
+            updateMessagePreview();
+            showToast('🔥 Ortaklık Fırsatı şablonu yüklendi', 'success');
+        }
+
+        function loadHairchiefsTemplate2() {
+            elements.messageContent.value = `🚀 Sayın {name},
+
+💎 HAIRCHIEFS ile KAZANÇ KAPINIZI AÇIN!
+
+📊 SADECE RAKAMLAR:
+💰 50.000₺ krediyle başlayın
+📈 %20'ye varan kar oranı  
+🏆 30.000+ başarılı operasyon
+⭐ 4.9 Google puanı
+
+🎯 Avrupa'nın en büyük saç ekim merkeziyle ortaklık!
+
+✨ Sadece 8 yıllık tecrübemizle...
+✨ 4000m² modern tesisimizle...
+✨ DHI, FUE, Sakal ekimi hizmetlerimizle...
+
+💬 Detaylar: 0544 675 71 13
+🌐 www.hairchiefs.com
+
+🔥 ÇOK SINIRLI KONTENJAN!`;
+            document.getElementById('templateMenu').classList.add('hidden');
+            updateMessagePreview();
+            showToast('💰 Yatırım Daveti şablonu yüklendi', 'success');
+        }
+
+        function loadHairchiefsTemplate3() {
+            elements.messageContent.value = `👋 Merhaba {name},
+
+🏆 30.000+ KİŞİ BİZİ SEÇTİ!
+
+✨ HAIRCHIEFS BAŞARI HİKAYESİ:
+🎯 8 yıllık güvenilir hizmet
+🌟 4.9 Google değerlendirme puanı
+🏥 4000 m² ultra modern tesis
+💪 Avrupa'nın en büyük kliniği
+
+🔥 ŞİMDİ SİZ DE KAZANIN:
+💰 %20 komisyon garantisi
+💳 50.000₺ kredi imkanı
+📋 Kolay başvuru süreci
+🤝 Güvenilir iş ortaklığı
+
+📞 ARAYIN: 0544 675 71 13
+💻 DETAY: www.hairchiefs.com
+
+⚡ FIRSATI KAÇIRMAYIN!
+
+#Başarı #Güven #Hairchiefs`;
+            document.getElementById('templateMenu').classList.add('hidden');
+            updateMessagePreview();
+            showToast('⭐ Başarı Hikayesi şablonu yüklendi', 'success');
+        }
+
+        function loadHairchiefsTemplate4() {
+            elements.messageContent.value = `🔥 {name}!
+
+HAIRCHIEFS ORTAKLIK FIRSATI! 🚀
+
+✅ %20 komisyon
+✅ 50.000₺ kredi  
+✅ 8 yıl tecrübe
+✅ 30.000+ başarı
+
+📞 0544 675 71 13
+🌐 hairchiefs.com
+
+⏰ SINIRLI SÜRE!`;
+            document.getElementById('templateMenu').classList.add('hidden');
+            updateMessagePreview();
+            showToast('🎯 Kısa & Etkili şablonu yüklendi', 'success');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Instance QR Code</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .qr-container { min-height: 400px; }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-6 py-8 max-w-4xl">
+        <div class="gradient-bg text-white rounded-xl p-8 mb-8 text-center">
+            <h1 class="text-3xl font-bold mb-4">📱 WhatsApp Instance Oluştur</h1>
+            <p class="text-xl">QR kod ile WhatsApp'ınızı bağlayın</p>
+        </div>
+
+        <!-- Instance Creation -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <div class="grid md:grid-cols-2 gap-8">
+                <div>
+                    <h2 class="text-2xl font-semibold mb-6 text-gray-800">🔧 Instance Ayarları</h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Instance Adı</label>
+                            <input type="text" id="instanceName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value="hairchiefs-wa" placeholder="instance-adi">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">API Base URL</label>
+                            <input type="text" id="apiBaseUrl" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value="http://localhost:8080" readonly>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+                            <input type="text" id="apiKey" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value="429683C4C977415CAAFCCE10F7D57E11">
+                        </div>
+
+                        <button id="createInstance" class="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition duration-200 font-semibold">
+                            <i class="fas fa-plus mr-2"></i>Instance Oluştur
+                        </button>
+
+                        <button id="getQRCode" class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold" disabled>
+                            <i class="fas fa-qrcode mr-2"></i>QR Kod Al
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h2 class="text-2xl font-semibold mb-6 text-gray-800">📱 QR Code</h2>
+                    
+                    <div id="qrContainer" class="qr-container bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                        <div id="qrPlaceholder" class="text-center text-gray-500">
+                            <i class="fas fa-qrcode text-6xl mb-4 text-gray-400"></i>
+                            <p>QR kod burada görünecek</p>
+                            <p class="text-sm mt-2">Önce instance oluşturun</p>
+                        </div>
+                        
+                        <div id="qrLoader" class="hidden text-center">
+                            <div class="pulse">
+                                <i class="fas fa-spinner fa-spin text-4xl text-blue-600 mb-4"></i>
+                            </div>
+                            <p class="text-gray-600">QR kod yükleniyor...</p>
+                        </div>
+                        
+                        <div id="qrCode" class="hidden text-center">
+                            <img id="qrImage" src="" alt="QR Code" class="mx-auto mb-4 rounded-lg shadow-lg max-w-xs">
+                            <p class="text-green-600 font-semibold">✅ QR Kod Hazır!</p>
+                            <p class="text-sm text-gray-600 mt-2">WhatsApp ile tarayın</p>
+                        </div>
+                    </div>
+
+                    <div id="connectionStatus" class="hidden mt-4 p-4 rounded-lg">
+                        <div class="flex items-center">
+                            <div id="statusIcon" class="mr-3"></div>
+                            <div>
+                                <p id="statusText" class="font-semibold"></p>
+                                <p id="statusDetail" class="text-sm text-gray-600"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-white rounded-xl shadow-lg p-8">
+            <h2 class="text-2xl font-semibold mb-6 text-gray-800">📋 Adım Adım Talimatlar</h2>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="text-center p-6 bg-blue-50 rounded-lg">
+                    <div class="text-4xl mb-4">1️⃣</div>
+                    <h3 class="font-semibold text-gray-800 mb-2">Instance Oluştur</h3>
+                    <p class="text-sm text-gray-600">"Instance Oluştur" butonuna tıklayarak WhatsApp instance'ı oluşturun</p>
+                </div>
+                
+                <div class="text-center p-6 bg-green-50 rounded-lg">
+                    <div class="text-4xl mb-4">2️⃣</div>
+                    <h3 class="font-semibold text-gray-800 mb-2">QR Kod Al</h3>
+                    <p class="text-sm text-gray-600">"QR Kod Al" butonuna tıklayarak QR kodu görüntüleyin</p>
+                </div>
+                
+                <div class="text-center p-6 bg-purple-50 rounded-lg">
+                    <div class="text-4xl mb-4">3️⃣</div>
+                    <h3 class="font-semibold text-gray-800 mb-2">WhatsApp ile Tara</h3>
+                    <p class="text-sm text-gray-600">WhatsApp > ⚙️ Ayarlar > 📱 Bağlı cihazlar > QR kodu tara</p>
+                </div>
+            </div>
+
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-lightbulb text-yellow-400 text-xl"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-yellow-800">💡 İpucu</h3>
+                        <div class="mt-2 text-sm text-yellow-700">
+                            <p>QR kodu taradıktan sonra toplu mesaj gönderimi için <a href="http://localhost:3001" class="text-blue-600 hover:underline font-semibold">WaPlus CRM</a> sayfasına gidin.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 space-y-2 z-50"></div>
+
+    <script>
+        const elements = {
+            instanceName: document.getElementById('instanceName'),
+            apiBaseUrl: document.getElementById('apiBaseUrl'),
+            apiKey: document.getElementById('apiKey'),
+            createInstance: document.getElementById('createInstance'),
+            getQRCode: document.getElementById('getQRCode'),
+            qrPlaceholder: document.getElementById('qrPlaceholder'),
+            qrLoader: document.getElementById('qrLoader'),
+            qrCode: document.getElementById('qrCode'),
+            qrImage: document.getElementById('qrImage'),
+            connectionStatus: document.getElementById('connectionStatus'),
+            statusIcon: document.getElementById('statusIcon'),
+            statusText: document.getElementById('statusText'),
+            statusDetail: document.getElementById('statusDetail')
+        };
+
+        let instanceCreated = false;
+        let pollInterval = null;
+
+        // Event Listeners
+        elements.createInstance.addEventListener('click', createInstance);
+        elements.getQRCode.addEventListener('click', getQRCode);
+
+        async function createInstance() {
+            const instanceName = elements.instanceName.value.trim();
+            const apiBaseUrl = elements.apiBaseUrl.value.trim();
+            const apiKey = elements.apiKey.value.trim();
+
+            if (!instanceName) {
+                showToast('Instance adı gerekli!', 'error');
+                return;
+            }
+
+            elements.createInstance.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Oluşturuluyor...';
+            elements.createInstance.disabled = true;
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/instance/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': apiKey
+                    },
+                    body: JSON.stringify({
+                        instanceName: instanceName,
+                        qrcode: true,
+                        webhook: null,
+                        webhookByEvents: false,
+                        webhookBase64: true,
+                        events: ['APPLICATION_STARTUP', 'QRCODE_UPDATED', 'MESSAGES_SET', 'MESSAGES_UPSERT', 'SEND_MESSAGE', 'CONNECTION_UPDATE']
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    instanceCreated = true;
+                    elements.getQRCode.disabled = false;
+                    showToast('Instance başarıyla oluşturuldu!', 'success');
+                    
+                    // Otomatik olarak QR kod al
+                    setTimeout(() => {
+                        getQRCode();
+                    }, 1000);
+                } else {
+                    const error = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${error}`);
+                }
+            } catch (error) {
+                console.error('Instance oluşturma hatası:', error);
+                showToast('Instance oluşturulamadı: ' + error.message, 'error');
+            } finally {
+                elements.createInstance.innerHTML = '<i class="fas fa-plus mr-2"></i>Instance Oluştur';
+                elements.createInstance.disabled = false;
+            }
+        }
+
+        async function getQRCode() {
+            const instanceName = elements.instanceName.value.trim();
+            const apiBaseUrl = elements.apiBaseUrl.value.trim();
+            const apiKey = elements.apiKey.value.trim();
+
+            if (!instanceCreated) {
+                showToast('Önce instance oluşturun!', 'error');
+                return;
+            }
+
+            // Show loader
+            elements.qrPlaceholder.classList.add('hidden');
+            elements.qrCode.classList.add('hidden');
+            elements.qrLoader.classList.remove('hidden');
+
+            elements.getQRCode.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>QR Kod Alınıyor...';
+            elements.getQRCode.disabled = true;
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/instance/connect/${instanceName}`, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': apiKey
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    if (result.base64) {
+                        // Show QR code
+                        elements.qrImage.src = result.base64;
+                        elements.qrLoader.classList.add('hidden');
+                        elements.qrCode.classList.remove('hidden');
+                        
+                        showToast('QR kod hazır! WhatsApp ile tarayın.', 'success');
+                        
+                        // Start polling for connection status
+                        startConnectionPolling();
+                    } else {
+                        throw new Error('QR kod verisi alınamadı');
+                    }
+                } else {
+                    const error = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${error}`);
+                }
+            } catch (error) {
+                console.error('QR kod alma hatası:', error);
+                showToast('QR kod alınamadı: ' + error.message, 'error');
+                
+                // Reset to placeholder
+                elements.qrLoader.classList.add('hidden');
+                elements.qrPlaceholder.classList.remove('hidden');
+            } finally {
+                elements.getQRCode.innerHTML = '<i class="fas fa-qrcode mr-2"></i>QR Kod Al';
+                elements.getQRCode.disabled = false;
+            }
+        }
+
+        function startConnectionPolling() {
+            if (pollInterval) clearInterval(pollInterval);
+            
+            pollInterval = setInterval(async () => {
+                await checkConnectionStatus();
+            }, 3000); // Her 3 saniyede bir kontrol et
+        }
+
+        async function checkConnectionStatus() {
+            const instanceName = elements.instanceName.value.trim();
+            const apiBaseUrl = elements.apiBaseUrl.value.trim();
+            const apiKey = elements.apiKey.value.trim();
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/instance/connectionState/${instanceName}`, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': apiKey
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    updateConnectionStatus(result.state);
+                }
+            } catch (error) {
+                console.error('Bağlantı durumu kontrol hatası:', error);
+            }
+        }
+
+        function updateConnectionStatus(state) {
+            elements.connectionStatus.classList.remove('hidden');
+            
+            switch (state) {
+                case 'open':
+                    elements.connectionStatus.className = 'mt-4 p-4 rounded-lg bg-green-50 border border-green-200';
+                    elements.statusIcon.innerHTML = '<i class="fas fa-check-circle text-green-600 text-xl"></i>';
+                    elements.statusText.textContent = 'Bağlantı Başarılı!';
+                    elements.statusText.className = 'font-semibold text-green-800';
+                    elements.statusDetail.textContent = 'WhatsApp başarıyla bağlandı. Artık mesaj gönderebilirsiniz.';
+                    
+                    // Stop polling
+                    if (pollInterval) {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                    }
+                    
+                    showToast('WhatsApp başarıyla bağlandı! 🎉', 'success');
+                    
+                    // Show success actions
+                    setTimeout(() => {
+                        if (confirm('Bağlantı başarılı! Toplu mesaj gönderimi için WaPlus CRM sayfasına gitmek ister misiniz?')) {
+                            window.open('http://localhost:3001', '_blank');
+                        }
+                    }, 2000);
+                    break;
+                    
+                case 'connecting':
+                    elements.connectionStatus.className = 'mt-4 p-4 rounded-lg bg-yellow-50 border border-yellow-200';
+                    elements.statusIcon.innerHTML = '<i class="fas fa-spinner fa-spin text-yellow-600 text-xl"></i>';
+                    elements.statusText.textContent = 'Bağlanıyor...';
+                    elements.statusText.className = 'font-semibold text-yellow-800';
+                    elements.statusDetail.textContent = 'QR kod tarandı, bağlantı kuruluyor.';
+                    break;
+                    
+                case 'close':
+                default:
+                    elements.connectionStatus.className = 'mt-4 p-4 rounded-lg bg-gray-50 border border-gray-200';
+                    elements.statusIcon.innerHTML = '<i class="fas fa-clock text-gray-600 text-xl"></i>';
+                    elements.statusText.textContent = 'Bağlantı Bekleniyor';
+                    elements.statusText.className = 'font-semibold text-gray-800';
+                    elements.statusDetail.textContent = 'QR kodu WhatsApp ile tarayın.';
+                    break;
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-600' : 
+                           type === 'error' ? 'bg-red-600' : 'bg-blue-600';
+            
+            toast.className = `${bgColor} text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-3 transform transition-all duration-300 translate-x-full`;
+            
+            const icon = type === 'success' ? 'fa-check-circle' : 
+                        type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+            
+            toast.innerHTML = `
+                <i class="fas ${icon}"></i>
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+
+            document.getElementById('toastContainer').appendChild(toast);
+
+            // Animate in
+            setTimeout(() => toast.classList.remove('translate-x-full'), 100);
+
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.add('translate-x-full');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+        });
+    </script>
+</body>
+</html>
