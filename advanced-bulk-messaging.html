@@ -308,8 +308,14 @@
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Advanced page initializing...');
             setupFileUpload();
             loadUploadedFiles();
+            
+            // Debug: Show if files exist
+            setTimeout(() => {
+                console.log('📄 Uploaded files:', uploadedFiles);
+            }, 1000);
         });
 
         // File Upload Setup
