@@ -61,9 +61,16 @@
                                     <!-- Uploaded files will appear here -->
                                 </div>
                                 
-                                <button onclick="loadUploadedFiles()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200">
-                                    🔄 Yüklenen Dosyaları Listele
-                                </button>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="document.getElementById('manualFileInput').click()" class="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition duration-200">
+                                        📤 Dosya Yükle
+                                    </button>
+                                    <button onclick="loadUploadedFiles()" class="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200">
+                                        🔄 Listele
+                                    </button>
+                                </div>
+                                
+                                <input type="file" id="manualFileInput" multiple class="hidden" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.mp3,.wav,.zip,.rar">
                             </div>
                         </div>
 
@@ -322,6 +329,7 @@
         function setupFileUpload() {
             const dropZone = document.getElementById('dropZone');
             const fileInput = document.getElementById('fileInput');
+            const manualFileInput = document.getElementById('manualFileInput');
 
             dropZone.addEventListener('click', () => fileInput.click());
 
@@ -343,6 +351,12 @@
             });
 
             fileInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                uploadFiles(files);
+            });
+
+            // Manual file upload button
+            manualFileInput.addEventListener('change', (e) => {
                 const files = Array.from(e.target.files);
                 uploadFiles(files);
             });
