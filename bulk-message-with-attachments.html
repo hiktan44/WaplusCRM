@@ -224,14 +224,19 @@
         };
 
         let contacts = [];
+        let selectedFiles = [];
         let currentInstance = 'hairchiefs-wa';
 
         function selectTemplate() {
             const templateKey = document.getElementById('templateSelect').value;
             if (templateKey && templates[templateKey]) {
                 document.getElementById('messageTemplate').value = templates[templateKey];
-                // Otomatik olarak broşürü seç
-                document.getElementById('attachmentSelect').value = 'hairchiefs-brochure.pdf';
+                // Otomatik olarak broşürü seç - checkbox ile
+                const broşürCheckbox = document.getElementById('file_hairchiefs-brochure.pdf');
+                if (broşürCheckbox) {
+                    broşürCheckbox.checked = true;
+                    updateSelectedFiles();
+                }
             }
         }
 
@@ -479,20 +484,32 @@
             }
         });
 
-        // Load available files
+        // Load available files as checkboxes
         async function loadAvailableFiles() {
             try {
                 const response = await fetch('/api/files');
                 const result = await response.json();
                 
-                const select = document.getElementById('attachmentSelect');
-                select.innerHTML = '<option value="none">❌ Dosya Ekleme</option>';
+                const container = document.getElementById('availableFilesList');
+                if (!container) {
+                    console.warn('availableFilesList element not found');
+                    return;
+                }
+                
+                container.innerHTML = '';
                 
                 result.files.forEach(file => {
                     const icon = getFileIcon(file.originalname);
-                    select.innerHTML += `<option value="${file.filename}">${icon} ${file.originalname}</option>`;
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center space-x-2';
+                    div.innerHTML = `
+                        <input type="checkbox" id="file_${file.filename}" class="file-checkbox" value="${file.filename}" onchange="updateSelectedFiles()">
+                        <label for="file_${file.filename}" class="text-sm cursor-pointer">${icon} ${file.originalname} (${formatFileSize(file.size)})</label>
+                    `;
+                    container.appendChild(div);
                 });
                 
+                updateSelectedFiles();
             } catch (error) {
                 console.error('Files loading error:', error);
             }
@@ -509,11 +526,62 @@
             return '📎';
         }
 
+        // Update selected files
+        function updateSelectedFiles() {
+            const checkboxes = document.querySelectorAll('.file-checkbox');
+            selectedFiles = [];
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    selectedFiles.push(cb.value);
+                }
+            });
+            
+            const display = document.getElementById('selectedFilesDisplay');
+            const list = document.getElementById('selectedFilesList');
+            
+            if (display && list) {
+                if (selectedFiles.length > 0) {
+                    display.classList.remove('hidden');
+                    list.innerHTML = selectedFiles.map(filename => {
+                        const icon = getFileIcon(filename);
+                        return `<div class="flex items-center justify-between bg-blue-50 p-2 rounded">
+                            <span class="text-sm">${icon} ${filename}</span>
+                            <button onclick="removeSelectedFile('${filename}')" class="text-red-500 hover:text-red-700 text-xs">❌</button>
+                        </div>`;
+                    }).join('');
+                } else {
+                    display.classList.add('hidden');
+                }
+            }
+        }
+
+        // Remove selected file
+        function removeSelectedFile(filename) {
+            const checkbox = document.getElementById(`file_${filename}`);
+            if (checkbox) {
+                checkbox.checked = false;
+                updateSelectedFiles();
+            }
+        }
+
+        // Clear all selected files
+        function clearSelectedFiles() {
+            const checkboxes = document.querySelectorAll('.file-checkbox');
+            checkboxes.forEach(cb => cb.checked = false);
+            updateSelectedFiles();
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
         // Load files on page load
         window.addEventListener('load', loadAvailableFiles);
-
-        // Attachment seçimi değiştiğinde contact listesini güncelle
-        document.getElementById('attachmentSelect').addEventListener('change', updateContactList);
     </script>
 </body>
 </html>
