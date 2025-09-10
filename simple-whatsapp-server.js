@@ -391,7 +391,7 @@ app.get('/instance/connectionState/:instanceName', (req, res) => {
 app.post('/message/sendText/:instanceName', async (req, res) => {
     try {
         const { instanceName } = req.params;
-        const { number, text, delay, attachment } = req.body;
+        const { number, text, delay, attachment, attachments } = req.body;
 
         const instanceData = clients.get(instanceName);
         if (!instanceData || !instanceData.isReady) {
@@ -417,23 +417,43 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
         }
 
         let message;
+        let sentAttachments = 0;
+        
+        // Determine which attachments to use (priority: attachments array > single attachment)
+        let filesToSend = [];
+        if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+            filesToSend = attachments;
+        } else if (attachment && attachment !== 'none') {
+            filesToSend = [attachment];
+        }
 
-        // Send with attachment if provided
-        if (attachment && attachment !== 'none') {
-            const attachmentPath = path.join(__dirname, 'uploads', attachment);
-            
-            if (fs.existsSync(attachmentPath)) {
-                const media = MessageMedia.fromFilePath(attachmentPath);
-                message = await instanceData.client.sendMessage(cleanNumber, media, { caption: text });
+        // Send text message first
+        message = await instanceData.client.sendMessage(cleanNumber, text);
+        console.log(`Text message sent to ${cleanNumber}`);
+
+        // Send attachments separately
+        if (filesToSend.length > 0) {
+            for (const filename of filesToSend) {
+                const attachmentPath = path.join(__dirname, 'uploads', filename);
                 
-                console.log(`Message with attachment sent to ${cleanNumber}`);
-            } else {
-                console.log(`Attachment not found: ${attachmentPath}, sending text only`);
-                message = await instanceData.client.sendMessage(cleanNumber, text);
+                if (fs.existsSync(attachmentPath)) {
+                    try {
+                        const media = MessageMedia.fromFilePath(attachmentPath);
+                        await instanceData.client.sendMessage(cleanNumber, media);
+                        sentAttachments++;
+                        console.log(`Attachment ${filename} sent to ${cleanNumber}`);
+                        
+                        // Small delay between attachments
+                        if (filesToSend.length > 1) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                    } catch (attachError) {
+                        console.error(`Failed to send attachment ${filename}:`, attachError);
+                    }
+                } else {
+                    console.warn(`Attachment not found: ${attachmentPath}`);
+                }
             }
-        } else {
-            // Send text only
-            message = await instanceData.client.sendMessage(cleanNumber, text);
         }
 
         res.json({
@@ -444,7 +464,9 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
             },
             message: {
                 conversation: text,
-                hasAttachment: !!attachment && attachment !== 'none'
+                hasAttachment: filesToSend.length > 0,
+                attachmentCount: sentAttachments,
+                attachments: filesToSend
             },
             status: 'SUCCESS'
         });
