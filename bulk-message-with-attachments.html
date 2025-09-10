@@ -57,13 +57,33 @@
                                       placeholder="Mesaj şablonunu seçin veya kendiniz yazın..."></textarea>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">📎 HAIRCHIEFS Broşürü</label>
-                                <select id="attachmentSelect" 
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <option value="none">❌ Broşür Ekleme</option>
-                                    <option value="hairchiefs-brochure.pdf">📄 HAIRCHIEFS Broşürü Ekle</option>
-                                </select>
-                                <p class="text-xs text-green-600 mt-1">✨ Broşür ile daha etkili sonuçlar alın!</p>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">📎 Dosya Ekleri (Resim, Video, PDF)</label>
+                                
+                                <div class="space-y-3">
+                                    <!-- File Upload Button -->
+                                    <button onclick="document.getElementById('fileUploadInput').click()" 
+                                            class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">
+                                        📤 Dosya Yükle (Resim, Video, PDF)
+                                    </button>
+                                    <input type="file" id="fileUploadInput" multiple class="hidden" 
+                                           accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.mp3,.wav,.zip,.rar">
+                                    
+                                    <!-- Available Files -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Mevcut Dosyalar:</label>
+                                        <select id="attachmentSelect" 
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="none">❌ Dosya Ekleme</option>
+                                            <option value="hairchiefs-brochure.pdf">📄 HAIRCHIEFS Broşürü</option>
+                                        </select>
+                                        <button onclick="loadAvailableFiles()" 
+                                                class="mt-2 w-full bg-gray-600 text-white py-1 px-3 rounded-md hover:bg-gray-700 transition duration-200 text-sm">
+                                            🔄 Dosya Listesini Yenile
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <p class="text-xs text-green-600 mt-2">✨ Resim, video ve PDF ile daha etkili sonuçlar alın!</p>
                             </div>
                             
                             <div>
@@ -327,6 +347,68 @@
                 `✅ Gönderim tamamlandı! Başarılı: ${sent}, Başarısız: ${failed}${attachmentSummary}`;
             document.getElementById('sendButton').disabled = false;
         }
+
+        // File Upload Functions
+        document.getElementById('fileUploadInput').addEventListener('change', async function(e) {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            const formData = new FormData();
+            files.forEach(file => {
+                formData.append('files', file);
+            });
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(`✅ ${result.count} dosya başarıyla yüklendi!`);
+                    loadAvailableFiles();
+                } else {
+                    alert('❌ Upload hatası: ' + result.error);
+                }
+            } catch (error) {
+                alert('❌ Upload hatası: ' + error.message);
+            }
+        });
+
+        // Load available files
+        async function loadAvailableFiles() {
+            try {
+                const response = await fetch('/api/files');
+                const result = await response.json();
+                
+                const select = document.getElementById('attachmentSelect');
+                select.innerHTML = '<option value="none">❌ Dosya Ekleme</option>';
+                
+                result.files.forEach(file => {
+                    const icon = getFileIcon(file.originalname);
+                    select.innerHTML += `<option value="${file.filename}">${icon} ${file.originalname}</option>`;
+                });
+                
+            } catch (error) {
+                console.error('Files loading error:', error);
+            }
+        }
+
+        // Get file icon
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) return '🖼️';
+            if (['mp4', 'mov', 'avi', 'mkv'].includes(ext)) return '🎥';
+            if (ext === 'pdf') return '📄';
+            if (['doc', 'docx'].includes(ext)) return '📝';
+            if (['mp3', 'wav'].includes(ext)) return '🎵';
+            return '📎';
+        }
+
+        // Load files on page load
+        window.addEventListener('load', loadAvailableFiles);
 
         // Attachment seçimi değiştiğinde contact listesini güncelle
         document.getElementById('attachmentSelect').addEventListener('change', updateContactList);
