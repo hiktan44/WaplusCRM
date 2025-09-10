@@ -94,28 +94,28 @@ export const INSTITUTIONS: InstitutionInfo[] = [
 export const DATE_RANGES = [
   {
     label: 'Son 1 Ay',
-    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    end: new Date()
+    get start() { return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); },
+    get end() { return new Date(); }
   },
   {
     label: 'Son 3 Ay',
-    start: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
-    end: new Date()
+    get start() { return new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); },
+    get end() { return new Date(); }
   },
   {
     label: 'Son 6 Ay',
-    start: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000),
-    end: new Date()
+    get start() { return new Date(Date.now() - 180 * 24 * 60 * 60 * 1000); },
+    get end() { return new Date(); }
   },
   {
     label: 'Son 1 Yıl',
-    start: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
-    end: new Date()
+    get start() { return new Date(Date.now() - 365 * 24 * 60 * 60 * 1000); },
+    get end() { return new Date(); }
   },
   {
     label: 'Son 2 Yıl',
-    start: new Date(Date.now() - 730 * 24 * 60 * 60 * 1000),
-    end: new Date()
+    get start() { return new Date(Date.now() - 730 * 24 * 60 * 60 * 1000); },
+    get end() { return new Date(); }
   }
 ];
 
