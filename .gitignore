@@ -56,3 +56,4 @@ evolution-api/sessions/
 # Temporary files
 tmp/
 temp/
+.vercel

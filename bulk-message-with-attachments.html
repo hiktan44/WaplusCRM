@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAIRCHIEFS Toplu Mesaj + Broşür Sistemi</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">💌 HAIRCHIEFS Toplu Mesaj + Broşür</h1>
+                    <p class="text-gray-600">Profesyonel şablonlarla toplu WhatsApp mesajı + HAIRCHIEFS broşürü gönderin</p>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h2 class="text-xl font-semibold mb-4">📋 1. Kişi Listesi</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">CSV/Excel Dosyası Yükle</label>
+                                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">Dosya formatı: name,phone (örn: Ahmet Yılmaz,905551234567)</p>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Manuel Giriş</label>
+                                <textarea id="manualInput" rows="4" 
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          placeholder="Ahmet Yılmaz,905551234567&#10;Mehmet Demir,905559876543"></textarea>
+                            </div>
+                            
+                            <button onclick="loadContacts()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200">
+                                📝 Kişileri Yükle
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h2 class="text-xl font-semibold mb-4">💬 2. Mesaj Şablonu + Broşür</h2>
+                        <div class="space-y-4">
+                            <select id="templateSelect" onchange="selectTemplate()" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Şablon Seçin...</option>
+                                <option value="partnership">🤝 Ortaklık Fırsatı</option>
+                                <option value="promotion">✂️ Saç Ekimi Promosyonu</option>
+                                <option value="consultation">👨‍⚕️ Ücretsiz Konsültasyon</option>
+                                <option value="success">⭐ Başarı Hikayesi</option>
+                            </select>
+                            
+                            <textarea id="messageTemplate" rows="8" 
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      placeholder="Mesaj şablonunu seçin veya kendiniz yazın..."></textarea>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">📎 HAIRCHIEFS Broşürü</label>
+                                <select id="attachmentSelect" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="none">❌ Broşür Ekleme</option>
+                                    <option value="hairchiefs-brochure.pdf">📄 HAIRCHIEFS Broşürü Ekle</option>
+                                </select>
+                                <p class="text-xs text-green-600 mt-1">✨ Broşür ile daha etkili sonuçlar alın!</p>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Gönderim Aralığı (saniye)</label>
+                                <input type="number" id="delayInput" value="5" min="1" max="30"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <p class="text-xs text-yellow-600 mt-1">⚠️ Broşür ile gönderim biraz daha uzun sürer</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 p-4 bg-gray-50 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-2">📊 Durum</h3>
+                    <div id="contactList" class="mb-4"></div>
+                    <div id="progressContainer" class="hidden">
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                            <div id="progressBar" class="bg-green-600 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                        <p id="progressText" class="text-sm text-gray-600">Hazırlanıyor...</p>
+                    </div>
+                    <button id="sendButton" onclick="startSending()" disabled 
+                            class="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition duration-200 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed">
+                        🚀 Mesaj + Broşür Göndermeyi Başlat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const templates = {
+            partnership: `💫 Merhaba {name}! ✨
+
+🔥 HAIRCHIEFS'ten size ÖZEL fırsat! 
+
+🎯 KUAFÖR ORTAKLIK PROGRAMI
+✅ %20'ye varan komisyon oranı
+✅ 50.000₺ kredi imkanı (6 taksit)
+✅ 8 yıllık deneyim & 30.000+ başarılı işlem
+✅ 4000 m² alan & modern teknoloji
+
+📎 Detaylı bilgi için ekteki broşürü inceleyin!
+
+📱 Hemen iletişim:
+☎️ 0850 205 02 73
+
+#HAIRCHIEFS #SaçEkimi #Ortaklık`,
+
+            promotion: `🌟 Merhaba {name}! 
+
+✂️ HAIRCHIEFS ÖZEL KAMPANYA! 
+
+🎁 SADECE BU AY:
+✅ Saç ekiminde %25 indirim
+✅ Ücretsiz saç analizi
+✅ 12 ay garanti
+✅ VIP transfer hizmeti
+
+👨‍⚕️ 8 yıllık tecrübe ile 30.000+ memnun hasta!
+
+📎 Kampanya detayları ekte!
+
+📞 Randevu için hemen arayın:
+☎️ 0850 205 02 73
+
+#HAIRCHIEFS #SaçEkimi #Kampanya`,
+
+            consultation: `👋 Merhaba {name}!
+
+👨‍⚕️ ÜCRETSIZ UZMAN KONSÜLTASYONU
+
+🔬 HAIRCHIEFS'ten size özel:
+✅ Saç dökülmesi analizi
+✅ Kişisel tedavi planı
+✅ 3D saç simülasyonu
+✅ Fiyat bilgilendirme
+
+🏥 30.000+ başarılı operasyon tecrübesi
+⭐ 4.9 Google puanı ile güvenilir hizmet
+
+📎 Hizmetlerimiz hakkında detaylar ekte!
+
+📱 Hemen ücretsiz analiz için:
+☎️ 0850 205 02 73
+
+#HAIRCHIEFS #SaçAnalizi #ÜcretsizKonsültasyon`,
+
+            success: `🎉 Merhaba {name}!
+
+⭐ HAIRCHIEFS BAŞARI HİKAYESİ
+
+📈 8 yıllık tecrübemizle:
+✅ 30.000+ memnun hasta
+✅ %99 başarı oranı  
+✅ 4.9 Google yorumu
+✅ Doğal görünüm garantisi
+
+💬 "Hayalindeki saçlara kavuştum!" 
+- Memnun hastalarımızdan...
+
+📎 Başarı hikayelerimiz ekte!
+
+🏆 Türkiye'nin en güvenilir saç ekimi merkezi
+
+📞 Siz de aramıza katılın:
+☎️ 0850 205 02 73
+
+#HAIRCHIEFS #BaşarıHikayesi #SaçEkimi`
+        };
+
+        let contacts = [];
+        let currentInstance = 'hairchiefs-wa';
+
+        function selectTemplate() {
+            const templateKey = document.getElementById('templateSelect').value;
+            if (templateKey && templates[templateKey]) {
+                document.getElementById('messageTemplate').value = templates[templateKey];
+                // Otomatik olarak broşürü seç
+                document.getElementById('attachmentSelect').value = 'hairchiefs-brochure.pdf';
+            }
+        }
+
+        function loadContacts() {
+            contacts = [];
+            
+            const fileInput = document.getElementById('fileInput');
+            const manualInput = document.getElementById('manualInput').value.trim();
+            
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        if (file.name.endsWith('.csv')) {
+                            parseCSV(e.target.result);
+                        } else {
+                            parseExcel(e.target.result);
+                        }
+                    } catch (error) {
+                        alert('Dosya okuma hatası: ' + error.message);
+                    }
+                };
+                
+                if (file.name.endsWith('.csv')) {
+                    reader.readAsText(file);
+                } else {
+                    reader.readAsBinaryString(file);
+                }
+            } else if (manualInput) {
+                parseCSV(manualInput);
+            } else {
+                alert('Lütfen dosya yükleyin veya manuel olarak kişi girin!');
+            }
+        }
+
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\\n');
+            contacts = [];
+            
+            lines.forEach(line => {
+                const [name, phone] = line.split(',').map(s => s.trim());
+                if (name && phone) {
+                    contacts.push({name, phone});
+                }
+            });
+            
+            updateContactList();
+        }
+
+        function parseExcel(binaryStr) {
+            const workbook = XLSX.read(binaryStr, {type: 'binary'});
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+            
+            contacts = [];
+            data.forEach(row => {
+                if (row[0] && row[1]) {
+                    contacts.push({name: row[0], phone: row[1]});
+                }
+            });
+            
+            updateContactList();
+        }
+
+        function updateContactList() {
+            const listElement = document.getElementById('contactList');
+            const attachment = document.getElementById('attachmentSelect').value;
+            
+            if (contacts.length > 0) {
+                const attachmentText = attachment !== 'none' ? ' + 📎 Broşür' : '';
+                listElement.innerHTML = `<p class="text-green-600 font-medium">✅ ${contacts.length} kişi yüklendi${attachmentText}</p>`;
+                document.getElementById('sendButton').disabled = false;
+            } else {
+                listElement.innerHTML = '<p class="text-red-600">❌ Hiç kişi yüklenmedi</p>';
+                document.getElementById('sendButton').disabled = true;
+            }
+        }
+
+        async function startSending() {
+            const template = document.getElementById('messageTemplate').value;
+            const delay = parseInt(document.getElementById('delayInput').value);
+            const attachment = document.getElementById('attachmentSelect').value;
+            
+            if (!template) {
+                alert('Lütfen mesaj şablonu seçin!');
+                return;
+            }
+
+            document.getElementById('progressContainer').classList.remove('hidden');
+            document.getElementById('sendButton').disabled = true;
+            
+            let sent = 0;
+            let failed = 0;
+
+            for (let i = 0; i < contacts.length; i++) {
+                const contact = contacts[i];
+                const personalizedMessage = template.replace('{name}', contact.name);
+                
+                try {
+                    const response = await fetch(`/message/sendText/${currentInstance}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            number: contact.phone,
+                            text: personalizedMessage,
+                            delay: delay,
+                            attachment: attachment
+                        })
+                    });
+
+                    if (response.ok) {
+                        sent++;
+                        const data = await response.json();
+                        console.log('Message sent:', data);
+                    } else {
+                        failed++;
+                        const errorData = await response.json();
+                        console.error('Send failed:', errorData);
+                    }
+                } catch (error) {
+                    failed++;
+                    console.error('Request error:', error);
+                }
+
+                const progress = ((i + 1) / contacts.length) * 100;
+                document.getElementById('progressBar').style.width = progress + '%';
+                
+                const attachmentStatus = attachment !== 'none' ? ' (📎 Broşür ile)' : '';
+                document.getElementById('progressText').textContent = 
+                    `İlerleme: ${i + 1}/${contacts.length}${attachmentStatus} - Başarılı: ${sent}, Başarısız: ${failed}`;
+                
+                if (i < contacts.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, delay * 1000));
+                }
+            }
+
+            const attachmentSummary = attachment !== 'none' ? ' + Broşür' : '';
+            document.getElementById('progressText').textContent = 
+                `✅ Gönderim tamamlandı! Başarılı: ${sent}, Başarısız: ${failed}${attachmentSummary}`;
+            document.getElementById('sendButton').disabled = false;
+        }
+
+        // Attachment seçimi değiştiğinde contact listesini güncelle
+        document.getElementById('attachmentSelect').addEventListener('change', updateContactList);
+    </script>
+</body>
+</html>

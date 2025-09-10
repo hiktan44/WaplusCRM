@@ -49,7 +49,10 @@ app.get('/', (req, res) => {
                         <div class="text-4xl mb-4">💌</div>
                         <h2 class="text-xl font-semibold mb-4">2. Toplu Mesaj</h2>
                         <p class="text-gray-600 mb-4">HAIRCHIEFS şablonları ile mesaj gönderin</p>
-                        <a href="/bulk" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition duration-200 inline-block">Toplu Mesaj Gönder</a>
+                        <div class="space-y-2">
+                            <a href="/bulk" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition duration-200 inline-block w-full">📝 Sadece Mesaj</a>
+                            <a href="/bulk-attachments" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-200 inline-block w-full">📎 Mesaj + Broşür</a>
+                        </div>
                     </div>
                 </div>
                 
@@ -84,6 +87,17 @@ app.get('/bulk', (req, res) => {
     fs.readFile(filePath, 'utf8', (err, data) => {
         if (err) {
             return res.status(500).send('Bulk message page not found');
+        }
+        res.send(data);
+    });
+});
+
+// Serve Bulk Message with Attachments page  
+app.get('/bulk-attachments', (req, res) => {
+    const filePath = path.join(__dirname, 'bulk-message-with-attachments.html');
+    fs.readFile(filePath, 'utf8', (err, data) => {
+        if (err) {
+            return res.status(500).send('Bulk message with attachments page not found');
         }
         res.send(data);
     });
@@ -260,7 +274,7 @@ app.get('/instance/connectionState/:instanceName', (req, res) => {
 app.post('/message/sendText/:instanceName', async (req, res) => {
     try {
         const { instanceName } = req.params;
-        const { number, text, delay } = req.body;
+        const { number, text, delay, attachment } = req.body;
 
         const instanceData = clients.get(instanceName);
         if (!instanceData || !instanceData.isReady) {
@@ -285,8 +299,25 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
             await new Promise(resolve => setTimeout(resolve, delay * 1000));
         }
 
-        // Send message
-        const message = await instanceData.client.sendMessage(cleanNumber, text);
+        let message;
+
+        // Send with attachment if provided
+        if (attachment && attachment !== 'none') {
+            const attachmentPath = path.join(__dirname, 'uploads', attachment);
+            
+            if (fs.existsSync(attachmentPath)) {
+                const media = MessageMedia.fromFilePath(attachmentPath);
+                message = await instanceData.client.sendMessage(cleanNumber, media, { caption: text });
+                
+                console.log(`Message with attachment sent to ${cleanNumber}`);
+            } else {
+                console.log(`Attachment not found: ${attachmentPath}, sending text only`);
+                message = await instanceData.client.sendMessage(cleanNumber, text);
+            }
+        } else {
+            // Send text only
+            message = await instanceData.client.sendMessage(cleanNumber, text);
+        }
 
         res.json({
             key: {
@@ -295,7 +326,8 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
                 id: message.id.id
             },
             message: {
-                conversation: text
+                conversation: text,
+                hasAttachment: !!attachment && attachment !== 'none'
             },
             status: 'SUCCESS'
         });
