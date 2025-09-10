@@ -244,7 +244,7 @@ app.post('/instance/create', async (req, res) => {
             return res.status(409).json({ error: 'Instance already exists' });
         }
 
-        // Create WhatsApp client
+        // Create WhatsApp client with minimal config
         const client = new Client({
             authStrategy: new LocalAuth({
                 clientId: instanceName,
@@ -256,11 +256,7 @@ app.post('/instance/create', async (req, res) => {
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--single-process',
-                    '--disable-gpu'
+                    '--disable-web-security'
                 ]
             }
         });
@@ -270,18 +266,28 @@ app.post('/instance/create', async (req, res) => {
             client: client,
             status: 'initializing',
             qrCode: null,
-            isReady: false
+            isReady: false,
+            qrGenerated: false,
+            lastQRTime: 0
         };
         
         clients.set(instanceName, instanceData);
 
-        // QR Code event
+        // QR Code event - only generate once
         client.on('qr', async (qr) => {
             try {
+                // Only generate QR once
+                if (instanceData.qrGenerated) {
+                    console.log(`QR Code request ignored for ${instanceName} (already generated)`);
+                    return;
+                }
+                
                 const qrCodeDataURL = await qrcode.toDataURL(qr);
                 instanceData.qrCode = qrCodeDataURL;
                 instanceData.status = 'qr_generated';
-                console.log(`QR Code generated for ${instanceName}`);
+                instanceData.qrGenerated = true;
+                instanceData.lastQRTime = Date.now();
+                console.log(`QR Code generated for ${instanceName} - ready to scan!`);
             } catch (err) {
                 console.error('QR generation error:', err);
             }
@@ -304,11 +310,32 @@ app.post('/instance/create', async (req, res) => {
         // Authentication failure
         client.on('auth_failure', (msg) => {
             instanceData.status = 'auth_failure';
+            instanceData.qrGenerated = false;
             console.error(`Auth failure for ${instanceName}:`, msg);
         });
 
-        // Initialize client
-        await client.initialize();
+        // Loading event
+        client.on('loading_screen', (percent, message) => {
+            console.log(`${instanceName}: Loading ${percent}% - ${message}`);
+        });
+
+        // Initialize client with timeout
+        const initTimeout = setTimeout(() => {
+            if (instanceData.status === 'initializing') {
+                instanceData.status = 'timeout';
+                console.error(`${instanceName}: Initialization timeout`);
+            }
+        }, 60000); // 60 second timeout
+
+        try {
+            await client.initialize();
+            clearTimeout(initTimeout);
+        } catch (error) {
+            clearTimeout(initTimeout);
+            instanceData.status = 'init_error';
+            console.error(`${instanceName}: Initialization error:`, error);
+            throw error;
+        }
 
         res.json({
             message: 'Instance created successfully',
