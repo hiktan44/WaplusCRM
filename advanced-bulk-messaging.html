@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAIRCHIEFS Gelişmiş Toplu Mesaj Sistemi</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        .file-drop-zone {
+            border: 2px dashed #cbd5e0;
+            transition: border-color 0.2s;
+        }
+        .file-drop-zone.dragover {
+            border-color: #3182ce;
+            background-color: #ebf8ff;
+        }
+        .contact-checkbox:checked + label {
+            background-color: #3182ce;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">🚀 HAIRCHIEFS Gelişmiş Toplu Mesaj</h1>
+                    <p class="text-gray-600">Profesyonel mesajlaşma, dosya yükleme ve seçmeli gönderim sistemi</p>
+                </div>
+
+                <div class="grid xl:grid-cols-3 gap-8">
+                    
+                    <!-- Left Panel: Contacts & Files -->
+                    <div class="xl:col-span-1 space-y-6">
+                        
+                        <!-- File Upload Section -->
+                        <div class="bg-blue-50 rounded-xl p-6">
+                            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                                <span class="text-2xl mr-2">📁</span>
+                                Dosya Yönetimi
+                            </h2>
+                            
+                            <div class="space-y-4">
+                                <div id="dropZone" class="file-drop-zone rounded-lg p-6 text-center cursor-pointer">
+                                    <div class="text-4xl mb-2">📤</div>
+                                    <p class="text-gray-600 mb-2">Dosyaları sürükle-bırak veya tıkla</p>
+                                    <p class="text-xs text-gray-500">Max: 250MB, 10 dosya</p>
+                                    <input type="file" id="fileInput" multiple class="hidden" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.mp3,.wav,.zip,.rar">
+                                </div>
+                                
+                                <div id="uploadProgress" class="hidden">
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div id="progressBar" class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                                    </div>
+                                    <p id="progressText" class="text-sm text-gray-600 mt-1"></p>
+                                </div>
+                                
+                                <div id="fileList" class="space-y-2 max-h-40 overflow-y-auto">
+                                    <!-- Uploaded files will appear here -->
+                                </div>
+                                
+                                <button onclick="loadUploadedFiles()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200">
+                                    🔄 Yüklenen Dosyaları Listele
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Contact Import Section -->
+                        <div class="bg-green-50 rounded-xl p-6">
+                            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                                <span class="text-2xl mr-2">👥</span>
+                                Kişi Listesi
+                            </h2>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">CSV/Excel Dosyası</label>
+                                    <input type="file" id="contactFileInput" accept=".csv,.xlsx,.xls" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Manuel Giriş</label>
+                                    <textarea id="manualInput" rows="3" 
+                                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                                              placeholder="İsim,Telefon&#10;Ahmet,905551234567"></textarea>
+                                </div>
+                                
+                                <button onclick="loadContacts()" class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition duration-200">
+                                    📝 Kişileri Yükle
+                                </button>
+                                
+                                <div id="contactSummary" class="text-sm text-gray-600"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Middle Panel: Message & Attachments -->
+                    <div class="xl:col-span-1 space-y-6">
+                        
+                        <div class="bg-purple-50 rounded-xl p-6">
+                            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                                <span class="text-2xl mr-2">💬</span>
+                                Mesaj & Ekler
+                            </h2>
+                            
+                            <div class="space-y-4">
+                                <select id="templateSelect" onchange="selectTemplate()" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="">Şablon Seçin...</option>
+                                    <option value="partnership">🤝 Ortaklık Fırsatı</option>
+                                    <option value="promotion">✂️ Saç Ekimi Promosyonu</option>
+                                    <option value="consultation">👨‍⚕️ Ücretsiz Konsültasyon</option>
+                                    <option value="success">⭐ Başarı Hikayesi</option>
+                                </select>
+                                
+                                <textarea id="messageTemplate" rows="8" 
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                          placeholder="Mesajınızı buraya yazın..."></textarea>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">📎 Eklenecek Dosyalar</label>
+                                    <div id="attachmentList" class="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-md p-3">
+                                        <p class="text-gray-500 text-sm">Henüz dosya seçilmedi</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Gönderim Aralığı</label>
+                                        <input type="number" id="delayInput" value="5" min="1" max="60"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Instance Adı</label>
+                                        <input type="text" id="instanceName" value="hairchiefs-wa" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: Contact Selection & Sending -->
+                    <div class="xl:col-span-1 space-y-6">
+                        
+                        <!-- Contact Selection -->
+                        <div class="bg-yellow-50 rounded-xl p-6">
+                            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                                <span class="text-2xl mr-2">🎯</span>
+                                Gönderim Seçenekleri
+                            </h2>
+                            
+                            <div class="space-y-4">
+                                <div class="flex space-x-2">
+                                    <button onclick="selectTestGroup()" class="flex-1 bg-blue-500 text-white py-2 px-3 rounded-md hover:bg-blue-600 text-sm">
+                                        🧪 İlk 3 Kişi (Test)
+                                    </button>
+                                    <button onclick="selectAllContacts()" class="flex-1 bg-green-500 text-white py-2 px-3 rounded-md hover:bg-green-600 text-sm">
+                                        👥 Tümünü Seç
+                                    </button>
+                                    <button onclick="clearSelection()" class="flex-1 bg-gray-500 text-white py-2 px-3 rounded-md hover:bg-gray-600 text-sm">
+                                        🗑️ Temizle
+                                    </button>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Kişi Seçimi</label>
+                                    <div id="contactSelection" class="max-h-60 overflow-y-auto border border-gray-300 rounded-md p-3 space-y-2">
+                                        <p class="text-gray-500 text-sm">Önce kişileri yükleyin</p>
+                                    </div>
+                                </div>
+                                
+                                <div id="selectionSummary" class="text-sm bg-white p-3 rounded-md border">
+                                    <p class="font-medium">Seçim Özeti:</p>
+                                    <p id="selectedCount">Seçili: 0 kişi</p>
+                                    <p id="attachmentCount">Dosya: 0 ek</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress & Send -->
+                        <div class="bg-red-50 rounded-xl p-6">
+                            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                                <span class="text-2xl mr-2">🚀</span>
+                                Gönderim
+                            </h2>
+                            
+                            <div class="space-y-4">
+                                <div id="sendingProgress" class="hidden">
+                                    <div class="w-full bg-gray-200 rounded-full h-3">
+                                        <div id="sendProgressBar" class="bg-green-600 h-3 rounded-full transition-all" style="width: 0%"></div>
+                                    </div>
+                                    <p id="sendProgressText" class="text-sm text-gray-600 mt-2"></p>
+                                </div>
+                                
+                                <button id="sendButton" onclick="startSending()" disabled 
+                                        class="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 px-6 rounded-lg hover:from-green-600 hover:to-blue-600 transition duration-200 font-bold disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed">
+                                    🚀 Mesaj Göndermeyi Başlat
+                                </button>
+                                
+                                <div id="sendResults" class="hidden text-sm">
+                                    <div class="bg-white p-4 rounded-md border">
+                                        <p class="font-medium mb-2">Gönderim Sonuçları:</p>
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div class="text-green-600">
+                                                <span class="font-bold" id="successCount">0</span> Başarılı
+                                            </div>
+                                            <div class="text-red-600">
+                                                <span class="font-bold" id="failureCount">0</span> Başarısız
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let contacts = [];
+        let selectedContacts = [];
+        let uploadedFiles = [];
+        let selectedAttachments = [];
+
+        // Template messages
+        const templates = {
+            partnership: `💫 Merhaba {name}! ✨
+
+🔥 HAIRCHIEFS'ten size ÖZEL fırsat! 
+
+🎯 KUAFÖR ORTAKLIK PROGRAMI
+✅ %20'ye varan komisyon oranı  
+✅ 50.000₺ kredi imkanı (6 taksit)
+✅ 8 yıllık deneyim & 30.000+ başarılı işlem
+✅ 4000 m² alan & modern teknoloji
+
+📎 Detaylı bilgi ekte!
+
+📱 Hemen iletişim: ☎️ 0850 205 02 73
+
+#HAIRCHIEFS #SaçEkimi #Ortaklık`,
+
+            promotion: `🌟 Merhaba {name}! 
+
+✂️ HAIRCHIEFS ÖZEL KAMPANYA! 
+
+🎁 SADECE BU AY:
+✅ Saç ekiminde %25 indirim
+✅ Ücretsiz saç analizi  
+✅ 12 ay garanti
+✅ VIP transfer hizmeti
+
+👨‍⚕️ 8 yıllık tecrübe ile 30.000+ memnun hasta!
+
+📎 Kampanya detayları ekte!
+
+📞 Randevu: ☎️ 0850 205 02 73
+
+#HAIRCHIEFS #SaçEkimi #Kampanya`,
+
+            consultation: `👋 Merhaba {name}!
+
+👨‍⚕️ ÜCRETSIZ UZMAN KONSÜLTASYONU
+
+🔬 HAIRCHIEFS'ten size özel:
+✅ Saç dökülmesi analizi
+✅ Kişisel tedavi planı
+✅ 3D saç simülasyonu  
+✅ Fiyat bilgilendirme
+
+🏥 30.000+ başarılı operasyon tecrübesi
+⭐ 4.9 Google puanı ile güvenilir hizmet
+
+📎 Hizmetlerimiz hakkında detaylar ekte!
+
+📱 Ücretsiz analiz: ☎️ 0850 205 02 73
+
+#HAIRCHIEFS #SaçAnalizi #ÜcretsizKonsültasyon`,
+
+            success: `🎉 Merhaba {name}!
+
+⭐ HAIRCHIEFS BAŞARI HİKAYESİ
+
+📈 8 yıllık tecrübemizle:
+✅ 30.000+ memnun hasta
+✅ %99 başarı oranı
+✅ 4.9 Google yorumu
+✅ Doğal görünüm garantisi
+
+💬 "Hayalindeki saçlara kavuştum!" 
+- Memnun hastalarımızdan...
+
+📎 Başarı hikayelerimiz ekte!
+
+🏆 Türkiye'nin en güvenilir saç ekimi merkezi
+
+📞 Siz de aramıza katılın: ☎️ 0850 205 02 73
+
+#HAIRCHIEFS #BaşarıHikayesi #SaçEkimi`
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            setupFileUpload();
+            loadUploadedFiles();
+        });
+
+        // File Upload Setup
+        function setupFileUpload() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                
+                const files = Array.from(e.dataTransfer.files);
+                uploadFiles(files);
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                uploadFiles(files);
+            });
+        }
+
+        // Upload Files
+        async function uploadFiles(files) {
+            if (files.length === 0) return;
+
+            const formData = new FormData();
+            files.forEach(file => {
+                formData.append('files', file);
+            });
+
+            document.getElementById('uploadProgress').classList.remove('hidden');
+            
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('progressText').textContent = `✅ ${result.count} dosya başarıyla yüklendi!`;
+                    document.getElementById('progressBar').style.width = '100%';
+                    
+                    setTimeout(() => {
+                        document.getElementById('uploadProgress').classList.add('hidden');
+                        loadUploadedFiles();
+                    }, 2000);
+                } else {
+                    alert('Upload hatası: ' + result.error);
+                }
+            } catch (error) {
+                alert('Upload hatası: ' + error.message);
+            }
+        }
+
+        // Load Uploaded Files
+        async function loadUploadedFiles() {
+            try {
+                const response = await fetch('/api/files');
+                const result = await response.json();
+                
+                uploadedFiles = result.files || [];
+                displayFileList();
+                updateAttachmentOptions();
+            } catch (error) {
+                console.error('Load files error:', error);
+            }
+        }
+
+        // Display File List
+        function displayFileList() {
+            const fileList = document.getElementById('fileList');
+            
+            if (uploadedFiles.length === 0) {
+                fileList.innerHTML = '<p class="text-gray-500 text-sm">Henüz dosya yüklenmemiş</p>';
+                return;
+            }
+
+            fileList.innerHTML = uploadedFiles.map(file => `
+                <div class="bg-white p-3 rounded-md border flex justify-between items-center text-sm">
+                    <div>
+                        <p class="font-medium">${file.originalname}</p>
+                        <p class="text-gray-500">${formatFileSize(file.size)} - ${formatDate(file.uploadDate)}</p>
+                    </div>
+                    <button onclick="deleteFile('${file.filename}')" class="text-red-500 hover:text-red-700">
+                        🗑️
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Update Attachment Options
+        function updateAttachmentOptions() {
+            const attachmentList = document.getElementById('attachmentList');
+            
+            if (uploadedFiles.length === 0) {
+                attachmentList.innerHTML = '<p class="text-gray-500 text-sm">Henüz dosya seçilmedi</p>';
+                return;
+            }
+
+            attachmentList.innerHTML = uploadedFiles.map(file => `
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                    <input type="checkbox" value="${file.filename}" onchange="toggleAttachment('${file.filename}')" class="attachment-checkbox">
+                    <span class="text-sm">${file.originalname}</span>
+                </label>
+            `).join('');
+        }
+
+        // Toggle Attachment Selection
+        function toggleAttachment(filename) {
+            const checkbox = document.querySelector(`input[value="${filename}"]`);
+            
+            if (checkbox.checked) {
+                if (!selectedAttachments.includes(filename)) {
+                    selectedAttachments.push(filename);
+                }
+            } else {
+                selectedAttachments = selectedAttachments.filter(f => f !== filename);
+            }
+            
+            updateSelectionSummary();
+        }
+
+        // Delete File
+        async function deleteFile(filename) {
+            if (!confirm('Bu dosyayı silmek istediğinizden emin misiniz?')) return;
+
+            try {
+                const response = await fetch(`/api/files/${filename}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    loadUploadedFiles();
+                } else {
+                    alert('Dosya silinirken hata oluştu');
+                }
+            } catch (error) {
+                alert('Silme hatası: ' + error.message);
+            }
+        }
+
+        // Contact Management
+        function selectTemplate() {
+            const templateKey = document.getElementById('templateSelect').value;
+            if (templateKey && templates[templateKey]) {
+                document.getElementById('messageTemplate').value = templates[templateKey];
+            }
+        }
+
+        function loadContacts() {
+            contacts = [];
+            
+            const fileInput = document.getElementById('contactFileInput');
+            const manualInput = document.getElementById('manualInput').value.trim();
+            
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        if (file.name.endsWith('.csv')) {
+                            parseCSV(e.target.result);
+                        } else {
+                            parseExcel(e.target.result);
+                        }
+                    } catch (error) {
+                        alert('Dosya okuma hatası: ' + error.message);
+                    }
+                };
+                
+                if (file.name.endsWith('.csv')) {
+                    reader.readAsText(file);
+                } else {
+                    reader.readAsBinaryString(file);
+                }
+            } else if (manualInput) {
+                parseCSV(manualInput);
+            } else {
+                alert('Lütfen dosya yükleyin veya manuel olarak kişi girin!');
+            }
+        }
+
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\\n');
+            contacts = [];
+            
+            lines.forEach((line, index) => {
+                const [name, phone] = line.split(',').map(s => s.trim());
+                if (name && phone) {
+                    contacts.push({id: index, name, phone, selected: false});
+                }
+            });
+            
+            updateContactDisplay();
+        }
+
+        function parseExcel(binaryStr) {
+            const workbook = XLSX.read(binaryStr, {type: 'binary'});
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+            
+            contacts = [];
+            data.forEach((row, index) => {
+                if (row[0] && row[1]) {
+                    contacts.push({id: index, name: row[0], phone: row[1], selected: false});
+                }
+            });
+            
+            updateContactDisplay();
+        }
+
+        // Contact Selection Functions
+        function selectTestGroup() {
+            contacts.forEach((contact, index) => {
+                contact.selected = index < 3;
+            });
+            updateContactDisplay();
+        }
+
+        function selectAllContacts() {
+            contacts.forEach(contact => {
+                contact.selected = true;
+            });
+            updateContactDisplay();
+        }
+
+        function clearSelection() {
+            contacts.forEach(contact => {
+                contact.selected = false;
+            });
+            updateContactDisplay();
+        }
+
+        function toggleContact(id) {
+            const contact = contacts.find(c => c.id === id);
+            if (contact) {
+                contact.selected = !contact.selected;
+                updateContactDisplay();
+            }
+        }
+
+        function updateContactDisplay() {
+            const contactSelection = document.getElementById('contactSelection');
+            const contactSummary = document.getElementById('contactSummary');
+            
+            if (contacts.length === 0) {
+                contactSelection.innerHTML = '<p class="text-gray-500 text-sm">Önce kişileri yükleyin</p>';
+                contactSummary.innerHTML = '';
+                return;
+            }
+
+            contactSelection.innerHTML = contacts.map(contact => `
+                <label class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer ${contact.selected ? 'bg-blue-100' : ''}">
+                    <input type="checkbox" ${contact.selected ? 'checked' : ''} 
+                           onchange="toggleContact(${contact.id})" class="contact-checkbox">
+                    <span class="text-sm flex-1">${contact.name} - ${contact.phone}</span>
+                </label>
+            `).join('');
+
+            contactSummary.innerHTML = `📊 Toplam: ${contacts.length} kişi yüklendi`;
+            
+            updateSelectionSummary();
+            updateSendButton();
+        }
+
+        function updateSelectionSummary() {
+            const selectedCount = contacts.filter(c => c.selected).length;
+            const attachmentCount = selectedAttachments.length;
+            
+            document.getElementById('selectedCount').textContent = `Seçili: ${selectedCount} kişi`;
+            document.getElementById('attachmentCount').textContent = `Dosya: ${attachmentCount} ek`;
+        }
+
+        function updateSendButton() {
+            const selectedCount = contacts.filter(c => c.selected).length;
+            const messageText = document.getElementById('messageTemplate').value.trim();
+            
+            const sendButton = document.getElementById('sendButton');
+            sendButton.disabled = selectedCount === 0 || messageText === '';
+            
+            if (selectedCount > 0 && messageText) {
+                sendButton.innerHTML = `🚀 ${selectedCount} Kişiye Mesaj Gönder`;
+            } else {
+                sendButton.innerHTML = '🚀 Mesaj Göndermeyi Başlat';
+            }
+        }
+
+        // Start Sending Messages
+        async function startSending() {
+            const selectedContactList = contacts.filter(c => c.selected);
+            const messageText = document.getElementById('messageTemplate').value.trim();
+            const delay = parseInt(document.getElementById('delayInput').value);
+            const instanceName = document.getElementById('instanceName').value;
+            
+            if (selectedContactList.length === 0) {
+                alert('Lütfen en az bir kişi seçin!');
+                return;
+            }
+            
+            if (!messageText) {
+                alert('Lütfen mesaj yazın!');
+                return;
+            }
+
+            document.getElementById('sendingProgress').classList.remove('hidden');
+            document.getElementById('sendButton').disabled = true;
+            
+            let successCount = 0;
+            let failureCount = 0;
+
+            for (let i = 0; i < selectedContactList.length; i++) {
+                const contact = selectedContactList[i];
+                const personalizedMessage = messageText.replace('{name}', contact.name);
+                
+                try {
+                    for (const attachmentFilename of selectedAttachments) {
+                        const response = await fetch(`/message/sendText/${instanceName}`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                number: contact.phone,
+                                text: personalizedMessage,
+                                delay: delay,
+                                attachment: attachmentFilename
+                            })
+                        });
+
+                        if (response.ok) {
+                            successCount++;
+                        } else {
+                            failureCount++;
+                        }
+                        
+                        // Small delay between attachments
+                        if (selectedAttachments.length > 1) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                    }
+                    
+                    // If no attachments, send text only
+                    if (selectedAttachments.length === 0) {
+                        const response = await fetch(`/message/sendText/${instanceName}`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                number: contact.phone,
+                                text: personalizedMessage,
+                                delay: delay
+                            })
+                        });
+
+                        if (response.ok) {
+                            successCount++;
+                        } else {
+                            failureCount++;
+                        }
+                    }
+                    
+                } catch (error) {
+                    failureCount++;
+                }
+
+                const progress = ((i + 1) / selectedContactList.length) * 100;
+                document.getElementById('sendProgressBar').style.width = progress + '%';
+                document.getElementById('sendProgressText').textContent = 
+                    `İlerleme: ${i + 1}/${selectedContactList.length} - Başarılı: ${successCount}, Başarısız: ${failureCount}`;
+                
+                if (i < selectedContactList.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, delay * 1000));
+                }
+            }
+
+            // Show results
+            document.getElementById('successCount').textContent = successCount;
+            document.getElementById('failureCount').textContent = failureCount;
+            document.getElementById('sendResults').classList.remove('hidden');
+            
+            document.getElementById('sendProgressText').textContent = '✅ Gönderim tamamlandı!';
+            document.getElementById('sendButton').disabled = false;
+        }
+
+        // Utility Functions
+        function formatFileSize(bytes) {
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            if (bytes === 0) return '0 Byte';
+            const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+            return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleString('tr-TR');
+        }
+
+        // Update send button when message changes
+        document.getElementById('messageTemplate').addEventListener('input', updateSendButton);
+    </script>
+</body>
+</html>

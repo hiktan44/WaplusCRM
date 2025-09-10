@@ -4,6 +4,7 @@ const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -15,6 +16,37 @@ app.use(express.urlencoded({ extended: true }));
 
 // WhatsApp clients storage
 const clients = new Map();
+
+// Multer configuration for file uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, './uploads/');
+    },
+    filename: function (req, file, cb) {
+        // Keep original filename with timestamp prefix
+        const timestamp = Date.now();
+        cb(null, `${timestamp}-${file.originalname}`);
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 250 * 1024 * 1024, // 250MB limit
+    },
+    fileFilter: function (req, file, cb) {
+        // Accept images, videos, documents, audio
+        const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|mp4|mp3|wav|zip|rar/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Unsupported file type'));
+        }
+    }
+});
 
 // Serve static files
 app.get('/', (req, res) => {
@@ -52,6 +84,7 @@ app.get('/', (req, res) => {
                         <div class="space-y-2">
                             <a href="/bulk" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition duration-200 inline-block w-full">📝 Sadece Mesaj</a>
                             <a href="/bulk-attachments" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-200 inline-block w-full">📎 Mesaj + Broşür</a>
+                            <a href="/advanced-bulk" class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition duration-200 inline-block w-full">🚀 Gelişmiş Toplu Mesaj</a>
                         </div>
                     </div>
                 </div>
@@ -103,6 +136,17 @@ app.get('/bulk-attachments', (req, res) => {
     });
 });
 
+// Serve Advanced Bulk Message page
+app.get('/advanced-bulk', (req, res) => {
+    const filePath = path.join(__dirname, 'advanced-bulk-messaging.html');
+    fs.readFile(filePath, 'utf8', (err, data) => {
+        if (err) {
+            return res.status(500).send('Advanced bulk message page not found');
+        }
+        res.send(data);
+    });
+});
+
 // API Status
 app.get('/api/status', (req, res) => {
     res.json({
@@ -112,6 +156,79 @@ app.get('/api/status', (req, res) => {
         version: '1.0.0',
         uptime: process.uptime()
     });
+});
+
+// Upload files endpoint
+app.post('/api/upload', upload.array('files', 10), (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ error: 'No files uploaded' });
+        }
+
+        const uploadedFiles = req.files.map(file => ({
+            filename: file.filename,
+            originalname: file.originalname,
+            size: file.size,
+            mimetype: file.mimetype,
+            path: file.path
+        }));
+
+        res.json({
+            message: 'Files uploaded successfully',
+            files: uploadedFiles,
+            count: uploadedFiles.length
+        });
+    } catch (error) {
+        console.error('Upload error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get uploaded files list
+app.get('/api/files', (req, res) => {
+    try {
+        const uploadsDir = path.join(__dirname, 'uploads');
+        const files = fs.readdirSync(uploadsDir)
+            .filter(file => file !== '.DS_Store')
+            .map(filename => {
+                const filePath = path.join(uploadsDir, filename);
+                const stats = fs.statSync(filePath);
+                return {
+                    filename: filename,
+                    originalname: filename.replace(/^\d+-/, ''), // Remove timestamp prefix
+                    size: stats.size,
+                    uploadDate: stats.birthtime,
+                    path: filePath
+                };
+            })
+            .sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate));
+
+        res.json({
+            files: files,
+            count: files.length
+        });
+    } catch (error) {
+        console.error('Get files error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete uploaded file
+app.delete('/api/files/:filename', (req, res) => {
+    try {
+        const filename = req.params.filename;
+        const filePath = path.join(__dirname, 'uploads', filename);
+        
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            res.json({ message: 'File deleted successfully', filename: filename });
+        } else {
+            res.status(404).json({ error: 'File not found' });
+        }
+    } catch (error) {
+        console.error('Delete file error:', error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // Create instance
