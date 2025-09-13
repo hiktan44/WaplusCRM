@@ -1,59 +1,38 @@
+# WaPlus CRM - WhatsApp Bulk Messaging System
+
 # Dependencies
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# WhatsApp sessions
-sessions/
 .wwebjs_auth/
 .wwebjs_cache/
 
-# Environment variables
+# Uploads and temp files
+uploads/*.jpg
+uploads/*.png
+uploads/*.pdf
+uploads/*.doc*
+*.png
+*.jpg
+*.ico
+
+# User data
+unsubscribed.json
+qr.html
+test.txt
+
+# Chrome extension artifacts
+1.7.24_0/
+*2.html
+*2.js
+*2.json
+*2.css
+*2.woff
+*2.ttf
+*2.svg
+*2.png
+*2.gif
+
+# CSV files
+*.csv
+
+# Environment
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Logs
-logs
-*.log
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Build outputs
-dist/
-build/
-
-# Evolution API specific
-evolution-api/node_modules/
-evolution-api/dist/
-evolution-api/.env
-evolution-api/evolution.db
-evolution-api/sessions/
-
-# Temporary files
-tmp/
-temp/
-.vercel

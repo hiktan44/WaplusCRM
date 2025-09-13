@@ -99,7 +99,7 @@
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Gönderim Aralığı (saniye)</label>
-                                <input type="number" id="delayInput" value="5" min="1" max="30"
+                                <input type="number" id="delayInput" value="5" min="1" max="30" autocomplete="off"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <p class="text-xs text-yellow-600 mt-1">⚠️ Broşür ile gönderim biraz daha uzun sürer</p>
                             </div>
@@ -133,9 +133,13 @@
                         </div>
                         <p id="progressText" class="text-sm text-gray-600">Hazırlanıyor...</p>
                     </div>
-                    <button id="sendButton" onclick="startSending()" disabled 
+                    <button id="sendButton" onclick="toggleSending()" disabled 
                             class="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition duration-200 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed">
                         🚀 Mesaj + Broşür Göndermeyi Başlat
+                    </button>
+                    <button id="stopButton" onclick="stopSending()" style="display: none;" 
+                            class="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition duration-200 font-medium mt-2">
+                        ⏹️ Göndermeyi Durdur
                     </button>
                 </div>
             </div>
@@ -157,7 +161,9 @@
 📎 Detaylı bilgi için ekteki broşürü inceleyin!
 
 📱 Hemen iletişim:
-☎️ 0850 205 02 73
+☎️ 0544 675 71 13
+
+📤 Abonelikten çıkmak için "abonelikten çık" yazın
 
 #HAIRCHIEFS #SaçEkimi #Ortaklık`,
 
@@ -176,7 +182,9 @@
 📎 Kampanya detayları ekte!
 
 📞 Randevu için hemen arayın:
-☎️ 0850 205 02 73
+☎️ 0544 675 71 13
+
+📤 Abonelikten çıkmak için "abonelikten çık" yazın
 
 #HAIRCHIEFS #SaçEkimi #Kampanya`,
 
@@ -196,7 +204,9 @@
 📎 Hizmetlerimiz hakkında detaylar ekte!
 
 📱 Hemen ücretsiz analiz için:
-☎️ 0850 205 02 73
+☎️ 0544 675 71 13
+
+📤 Abonelikten çıkmak için "abonelikten çık" yazın
 
 #HAIRCHIEFS #SaçAnalizi #ÜcretsizKonsültasyon`,
 
@@ -218,12 +228,16 @@
 🏆 Türkiye'nin en güvenilir saç ekimi merkezi
 
 📞 Siz de aramıza katılın:
-☎️ 0850 205 02 73
+☎️ 0544 675 71 13
+
+📤 Abonelikten çıkmak için "abonelikten çık" yazın
 
 #HAIRCHIEFS #BaşarıHikayesi #SaçEkimi`
         };
 
         let contacts = [];
+        let isSending = false;
+        let shouldStop = false;
         let selectedFiles = [];
         let currentInstance = 'hairchiefs-wa';
 
@@ -275,15 +289,74 @@
         }
 
         function parseCSV(csvText) {
-            const lines = csvText.trim().split('\\n');
+            const lines = csvText.trim().split('\n');
             contacts = [];
             
-            lines.forEach(line => {
-                const [name, phone] = line.split(',').map(s => s.trim());
-                if (name && phone) {
-                    contacts.push({name, phone});
+            // First line might be header, check if it contains phone-like pattern
+            let startIndex = 0;
+            if (lines.length > 0) {
+                const firstLine = lines[0];
+                // If first line doesn't contain numbers that look like phone numbers, skip it (header)
+                if (!firstLine.match(/\d{10,}/)) {
+                    startIndex = 1;
                 }
-            });
+            }
+            
+            for (let i = startIndex; i < lines.length; i++) {
+                const line = lines[i];
+                const parts = line.split(',').map(s => s.trim());
+                
+                if (parts.length >= 2) {
+                    let name = '';
+                    let phone = '';
+                    
+                    // Try to detect which part is phone number
+                    for (let j = 0; j < parts.length; j++) {
+                        let part = parts[j].replace(/[^\d+]/g, '');
+                        
+                        // Turkish phone number formatting on client side
+                        if (part.startsWith('0') && part.length === 11) {
+                            part = '9' + part; // 05551234567 -> 905551234567
+                        } else if (part.startsWith('5') && part.length === 10) {
+                            part = '90' + part; // 5551234567 -> 905551234567
+                        } else if (!part.startsWith('90') && part.length === 10) {
+                            part = '90' + part; // Any 10-digit -> 90xxxxxxxxxx
+                        }
+                        
+                        if (part.length >= 10) { // This looks like a phone number
+                            phone = part;
+                            // The other parts are likely name/business name
+                            name = parts.filter((p, idx) => idx !== j).join(' ').trim();
+                            break;
+                        }
+                    }
+                    
+                    // Fallback: assume first column is name, second is phone
+                    if (!phone) {
+                        name = parts[0];
+                        let rawPhone = parts[1].replace(/[^\d+]/g, '');
+                        
+                        // Apply Turkish formatting to fallback phone
+                        if (rawPhone.startsWith('0') && rawPhone.length === 11) {
+                            phone = '9' + rawPhone;
+                        } else if (rawPhone.startsWith('5') && rawPhone.length === 10) {
+                            phone = '90' + rawPhone;
+                        } else if (!rawPhone.startsWith('90') && rawPhone.length === 10) {
+                            phone = '90' + rawPhone;
+                        } else {
+                            phone = rawPhone;
+                        }
+                    }
+                    
+                    // Validate phone number
+                    if (phone && phone.length >= 10 && name) {
+                        contacts.push({name, phone});
+                        console.log(`Parsed contact: ${name} -> ${phone}`);
+                    } else {
+                        console.warn(`Skipped invalid contact: ${line}`);
+                    }
+                }
+            }
             
             updateContactList();
         }
@@ -294,11 +367,80 @@
             const data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
             
             contacts = [];
-            data.forEach(row => {
-                if (row[0] && row[1]) {
-                    contacts.push({name: row[0], phone: row[1]});
+            
+            // Skip first row if it looks like headers
+            let startIndex = 0;
+            if (data.length > 0) {
+                const firstRow = data[0];
+                // If first row doesn't contain numbers that look like phone numbers, skip it
+                const hasPhoneNumber = firstRow.some(cell => {
+                    if (typeof cell === 'string' || typeof cell === 'number') {
+                        const cleaned = cell.toString().replace(/[^\d]/g, '');
+                        return cleaned.length >= 10;
+                    }
+                    return false;
+                });
+                if (!hasPhoneNumber) {
+                    startIndex = 1;
                 }
-            });
+            }
+            
+            for (let i = startIndex; i < data.length; i++) {
+                const row = data[i];
+                if (row && row.length >= 2) {
+                    let name = '';
+                    let phone = '';
+                    
+                    // Try to detect which column contains phone number
+                    for (let j = 0; j < row.length; j++) {
+                        const cell = row[j];
+                        if (cell) {
+                            let cleaned = cell.toString().replace(/[^\d+]/g, '');
+                            
+                            // Turkish phone number formatting for Excel
+                            if (cleaned.startsWith('0') && cleaned.length === 11) {
+                                cleaned = '9' + cleaned; // 05551234567 -> 905551234567
+                            } else if (cleaned.startsWith('5') && cleaned.length === 10) {
+                                cleaned = '90' + cleaned; // 5551234567 -> 905551234567
+                            } else if (!cleaned.startsWith('90') && cleaned.length === 10) {
+                                cleaned = '90' + cleaned; // Any 10-digit -> 90xxxxxxxxxx
+                            }
+                            
+                            if (cleaned.length >= 10) { // This looks like a phone number
+                                phone = cleaned;
+                                // The other cells are likely name/business name
+                                name = row.filter((c, idx) => idx !== j && c).join(' ').trim();
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Fallback: assume first column is name, second is phone
+                    if (!phone && row[0] && row[1]) {
+                        name = row[0].toString();
+                        let rawPhone = row[1].toString().replace(/[^\d+]/g, '');
+                        
+                        // Apply Turkish formatting to fallback phone too
+                        if (rawPhone.startsWith('0') && rawPhone.length === 11) {
+                            phone = '9' + rawPhone;
+                        } else if (rawPhone.startsWith('5') && rawPhone.length === 10) {
+                            phone = '90' + rawPhone;
+                        } else if (!rawPhone.startsWith('90') && rawPhone.length === 10) {
+                            phone = '90' + rawPhone;
+                        } else {
+                            phone = rawPhone;
+                        }
+                    }
+                    
+                    // Validate and add contact
+                    if (phone && phone.length >= 10 && name) {
+                        contacts.push({name, phone});
+                        console.log(`Excel parsed contact: ${name} -> ${phone}`);
+                    } else {
+                        console.warn(`Excel skipped invalid row:`, row);
+                    }
+                }
+            }
             
             updateContactList();
         }
@@ -377,6 +519,25 @@
             updateContactSelection();
         }
 
+        function toggleSending() {
+            if (isSending) {
+                stopSending();
+            } else {
+                startSending();
+            }
+        }
+
+        function stopSending() {
+            shouldStop = true;
+            isSending = false;
+            
+            document.getElementById('sendButton').textContent = '🚀 Mesaj + Broşür Göndermeyi Başlat';
+            document.getElementById('sendButton').disabled = false;
+            document.getElementById('sendButton').className = 'w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition duration-200 font-medium';
+            document.getElementById('stopButton').style.display = 'none';
+            document.getElementById('progressText').textContent = 'Gönderim durduruldu.';
+        }
+
         async function startSending() {
             const template = document.getElementById('messageTemplate').value;
             const delay = parseInt(document.getElementById('delayInput').value);
@@ -401,15 +562,35 @@
                 return;
             }
 
+            // Set sending state
+            isSending = true;
+            shouldStop = false;
+            
             document.getElementById('progressContainer').classList.remove('hidden');
-            document.getElementById('sendButton').disabled = true;
+            document.getElementById('sendButton').textContent = '⏸️ Gönderim Devam Ediyor...';
+            document.getElementById('sendButton').className = 'w-full bg-gray-600 text-white py-3 px-4 rounded-lg cursor-not-allowed font-medium';
+            document.getElementById('stopButton').style.display = 'block';
             
             let sent = 0;
             let failed = 0;
 
             for (let i = 0; i < selectedContacts.length; i++) {
+                // Check if user wants to stop
+                if (shouldStop) {
+                    document.getElementById('progressText').textContent = 'Gönderim durduruldu.';
+                    break;
+                }
+                
                 const contact = selectedContacts[i];
                 const personalizedMessage = template.replace('{name}', contact.name);
+                
+                // Client-side phone validation
+                const cleanPhone = contact.phone.replace(/[^\d+]/g, '');
+                if (cleanPhone.length < 10) {
+                    console.warn(`Invalid phone number: ${contact.name} -> ${contact.phone}`);
+                    failed++;
+                    continue;
+                }
                 
                 try {
                     const response = await fetch(`/message/sendText/${currentInstance}`, {
@@ -449,10 +630,18 @@
                 }
             }
 
+            // Reset sending state
+            isSending = false;
+            shouldStop = false;
+            
             const attachmentSummary = selectedFiles.length > 0 ? ` + ${selectedFiles.length} ek` : '';
             document.getElementById('progressText').textContent = 
                 `✅ Gönderim tamamlandı! Başarılı: ${sent}, Başarısız: ${failed}${attachmentSummary}`;
+            
+            document.getElementById('sendButton').textContent = '🚀 Mesaj + Broşür Göndermeyi Başlat';
             document.getElementById('sendButton').disabled = false;
+            document.getElementById('sendButton').className = 'w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition duration-200 font-medium';
+            document.getElementById('stopButton').style.display = 'none';
         }
 
         // File Upload Functions
@@ -579,6 +768,33 @@
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
+
+        // Error handling for browser extensions
+        window.addEventListener('error', function(e) {
+            // Suppress browser extension errors
+            if (e.error && e.error.message && 
+                (e.error.message.includes('runtime.lastError') || 
+                 e.error.message.includes('Receiving end does not exist') ||
+                 e.error.message.includes('chrome-extension') ||
+                 e.error.message.includes('Could not establish connection'))) {
+                console.log('Suppressed extension error:', e.error.message);
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Promise rejection handling for extensions
+        window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && e.reason.message && 
+                (e.reason.message.includes('runtime.lastError') || 
+                 e.reason.message.includes('Receiving end does not exist') ||
+                 e.reason.message.includes('chrome-extension') ||
+                 e.reason.message.includes('Could not establish connection'))) {
+                console.log('Suppressed extension promise rejection:', e.reason.message);
+                e.preventDefault();
+                return false;
+            }
+        });
 
         // Load files on page load
         window.addEventListener('load', loadAvailableFiles);
