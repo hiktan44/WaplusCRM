@@ -490,6 +490,20 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
             return res.status(400).json({ error: 'Instance not connected' });
         }
 
+        // Verify underlying WA client state before attempting to send
+        try {
+            const state = await instanceData.client.getState();
+            if (state !== 'CONNECTED') {
+                instanceData.status = 'disconnected';
+                instanceData.isReady = false;
+                return res.status(400).json({ error: `Instance not connected: ${state}` });
+            }
+        } catch (stateErr) {
+            instanceData.status = 'disconnected';
+            instanceData.isReady = false;
+            return res.status(400).json({ error: 'Instance state check failed' });
+        }
+
         if (!number || !text) {
             return res.status(400).json({ error: 'number and text are required' });
         }
@@ -695,8 +709,22 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
 
     } catch (error) {
         console.error('Send message error:', error);
+        const message = (error && error.message) ? error.message : String(error);
+        if (/Protocol error|Session closed|page has been closed/i.test(message)) {
+            // Mark instance as disconnected to force reconnection on next attempt
+            const { instanceName } = req.params;
+            const instanceData = clients.get(instanceName);
+            if (instanceData) {
+                instanceData.status = 'disconnected';
+                instanceData.isReady = false;
+            }
+            return res.status(400).json({ 
+                error: 'Instance lost session with WhatsApp. Please re-open QR and reconnect.',
+                status: 'ERROR'
+            });
+        }
         res.status(500).json({ 
-            error: error.message,
+            error: message,
             status: 'ERROR'
         });
     }
