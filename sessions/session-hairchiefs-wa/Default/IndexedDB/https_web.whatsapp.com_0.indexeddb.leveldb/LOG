@@ -1,19 +1,19 @@
-2025/09/24-05:27:29.651 79b1 Reusing MANIFEST /workspace/sessions/session-hairchiefs-wa/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/09/24-05:27:29.651 79b1 Recovering log #141
-2025/09/24-05:27:29.655 79b1 Reusing old log /workspace/sessions/session-hairchiefs-wa/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000141.log 
-2025/09/24-05:27:30.916 79af Level-0 table #149: started
-2025/09/24-05:27:30.919 79af Level-0 table #149: 123671 bytes OK
-2025/09/24-05:27:30.920 79af Delete type=0 #141
-2025/09/24-05:27:30.920 79af Manual compaction at level-0 from '\x00\x1a\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1b\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/09/24-05:27:32.077 7973 Compacting 1@1 + 4@2 files
-2025/09/24-05:27:32.105 7973 Generated table #150@1: 43411 keys, 2190674 bytes
-2025/09/24-05:27:32.148 7973 Generated table #151@1: 34952 keys, 2201614 bytes
-2025/09/24-05:27:32.194 7973 Generated table #152@1: 50489 keys, 2215457 bytes
-2025/09/24-05:27:32.215 7973 Generated table #153@1: 44088 keys, 1364124 bytes
-2025/09/24-05:27:32.215 7973 Compacted 1@1 + 4@2 files => 7971869 bytes
-2025/09/24-05:27:32.215 7973 compacted to: files[ 0 0 4 0 0 0 0 ]
-2025/09/24-05:27:32.216 7973 Delete type=2 #146
-2025/09/24-05:27:32.216 7973 Delete type=2 #145
-2025/09/24-05:27:32.216 7973 Delete type=2 #149
-2025/09/24-05:27:32.216 7973 Delete type=2 #144
-2025/09/24-05:27:32.216 7973 Delete type=2 #143
+2025/09/24-05:43:51.746 9bce Reusing MANIFEST /workspace/sessions/session-hairchiefs-wa/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/09/24-05:43:51.746 9bce Recovering log #148
+2025/09/24-05:43:51.759 9bce Reusing old log /workspace/sessions/session-hairchiefs-wa/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000148.log 
+2025/09/24-05:43:53.056 9bcd Level-0 table #156: started
+2025/09/24-05:43:53.060 9bcd Level-0 table #156: 293144 bytes OK
+2025/09/24-05:43:53.061 9bcd Delete type=0 #148
+2025/09/24-05:43:53.061 9bcd Manual compaction at level-0 from '\x00\x1b\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1c\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/09/24-05:43:54.232 9bcd Compacting 1@1 + 4@2 files
+2025/09/24-05:43:54.262 9bcd Generated table #157@1: 44508 keys, 2191428 bytes
+2025/09/24-05:43:54.298 9bcd Generated table #158@1: 34671 keys, 2202361 bytes
+2025/09/24-05:43:54.352 9bcd Generated table #159@1: 50365 keys, 2215080 bytes
+2025/09/24-05:43:54.373 9bcd Generated table #160@1: 44985 keys, 1419171 bytes
+2025/09/24-05:43:54.373 9bcd Compacted 1@1 + 4@2 files => 8028040 bytes
+2025/09/24-05:43:54.374 9bcd compacted to: files[ 0 0 4 0 0 0 0 ]
+2025/09/24-05:43:54.374 9bcd Delete type=2 #156
+2025/09/24-05:43:54.374 9bcd Delete type=2 #152
+2025/09/24-05:43:54.374 9bcd Delete type=2 #151
+2025/09/24-05:43:54.374 9bcd Delete type=2 #153
+2025/09/24-05:43:54.374 9bcd Delete type=2 #150
