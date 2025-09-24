@@ -567,31 +567,49 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
             filesToSend = [attachment];
         }
 
-        // Send message with attachments - PROPER CAPTION METHOD: Media with embedded text
+        // Send message with attachments - Prefer rich preview for PDFs by sending a JPG/PNG thumbnail first
         if (filesToSend.length > 0) {
             const firstAttachmentPath = path.join(__dirname, 'uploads', filesToSend[0]);
             
             if (fs.existsSync(firstAttachmentPath)) {
                 try {
-                    // Create media from file
-                    const media = MessageMedia.fromFilePath(firstAttachmentPath);
-                    
-                    console.log(`📸 Preparing media with caption for ${cleanNumber}`);
-                    console.log(`📝 Template text: "${text}"`);
-                    
-                    // Send media with caption using proper object format
-                    if (text && text.trim()) {
-                        // Method 1: Try sending media with caption as object property
-                        message = await instanceData.client.sendMessage(cleanNumber, media, {
-                            caption: text.trim()
-                        });
-                        console.log(`✅ Media sent with caption (method 1) to ${cleanNumber}`);
-                    } else {
-                        // Send media without caption if no text
-                        message = await instanceData.client.sendMessage(cleanNumber, media);
-                        console.log(`📸 Media sent without caption to ${cleanNumber}`);
+                    // If first file is a PDF, try to send an image preview (same basename .jpg/.png) first with caption
+                    const isPdf = /\.pdf$/i.test(filesToSend[0]);
+                    let previewSent = false;
+                    if (isPdf) {
+                        const parsed = path.parse(filesToSend[0]);
+                        const candidateImages = [
+                            path.join(__dirname, 'uploads', `${parsed.name}.jpg`),
+                            path.join(__dirname, 'uploads', `${parsed.name}.jpeg`),
+                            path.join(__dirname, 'uploads', `${parsed.name}.png`)
+                        ];
+                        const previewPath = candidateImages.find(p => fs.existsSync(p));
+                        if (previewPath) {
+                            const previewMedia = MessageMedia.fromFilePath(previewPath);
+                            console.log(`🖼️ Sending preview image for PDF to ${cleanNumber}: ${path.basename(previewPath)}`);
+                            if (text && text.trim()) {
+                                message = await instanceData.client.sendMessage(cleanNumber, previewMedia, { caption: text.trim() });
+                            } else {
+                                message = await instanceData.client.sendMessage(cleanNumber, previewMedia);
+                            }
+                            previewSent = true;
+                        }
                     }
-                    
+
+                    // If not a PDF or no preview available, send the original file (image/video/doc)
+                    if (!previewSent) {
+                        const media = MessageMedia.fromFilePath(firstAttachmentPath);
+                        console.log(`📸 Preparing media with caption for ${cleanNumber}`);
+                        console.log(`📝 Template text: "${text}"`);
+                        if (text && text.trim()) {
+                            message = await instanceData.client.sendMessage(cleanNumber, media, { caption: text.trim() });
+                            console.log(`✅ Media sent with caption to ${cleanNumber}`);
+                        } else {
+                            message = await instanceData.client.sendMessage(cleanNumber, media);
+                            console.log(`📸 Media sent without caption to ${cleanNumber}`);
+                        }
+                    }
+
                     sentAttachments++;
                     
                     // Send additional attachments if any (without caption)
@@ -605,7 +623,9 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
                                 await new Promise(resolve => setTimeout(resolve, 800));
                                 
                                 const additionalMedia = MessageMedia.fromFilePath(attachmentPath);
-                                await instanceData.client.sendMessage(cleanNumber, additionalMedia);
+                                // For documents (like PDF), ensure they go as document; for images/videos default is fine
+                                const sendAsDocument = /\.(pdf|docx?|xlsx?|pptx?)$/i.test(filename);
+                                await instanceData.client.sendMessage(cleanNumber, additionalMedia, sendAsDocument ? { sendMediaAsDocument: true } : {});
                                 sentAttachments++;
                                 console.log(`Additional attachment ${filename} sent to ${cleanNumber}`);
                             } catch (attachError) {
