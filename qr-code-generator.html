@@ -215,6 +215,8 @@
             }
         }
 
+        let qrPollInterval = null;
+
         async function getQRCode() {
             const instanceName = elements.instanceName.value.trim();
             const apiBaseUrl = elements.apiBaseUrl.value.trim();
@@ -254,7 +256,10 @@
                         // Start polling for connection status
                         startConnectionPolling();
                     } else {
-                        throw new Error('QR kod verisi alınamadı');
+                        // QR henüz hazır değilse bekleyip tekrar dene
+                        elements.qrLoader.classList.remove('hidden');
+                        showToast('QR hazırlanıyor, lütfen bekleyin...', 'info');
+                        startQrPolling(instanceName, apiBaseUrl);
                     }
                 } else {
                     const error = await response.text();
@@ -271,6 +276,28 @@
                 elements.getQRCode.innerHTML = '<i class="fas fa-qrcode mr-2"></i>QR Kod Al';
                 elements.getQRCode.disabled = false;
             }
+        }
+
+        function startQrPolling(instanceName, apiBaseUrl) {
+            if (qrPollInterval) clearInterval(qrPollInterval);
+            qrPollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`${apiBaseUrl}/instance/connect/${instanceName}`);
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    if (data.base64) {
+                        elements.qrImage.src = data.base64;
+                        elements.qrLoader.classList.add('hidden');
+                        elements.qrCode.classList.remove('hidden');
+                        clearInterval(qrPollInterval);
+                        qrPollInterval = null;
+                        startConnectionPolling();
+                        showToast('QR kod hazır! WhatsApp ile tarayın.', 'success');
+                    }
+                } catch (e) {
+                    // ignore transient errors
+                }
+            }, 2000);
         }
 
         function startConnectionPolling() {
