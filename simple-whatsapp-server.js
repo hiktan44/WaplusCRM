@@ -13,6 +13,8 @@ const port = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Serve uploaded files statically for previews/downloads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // WhatsApp clients storage
 const clients = new Map();
