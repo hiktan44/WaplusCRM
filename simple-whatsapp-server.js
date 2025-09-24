@@ -158,6 +158,8 @@ app.get('/qr', (req, res) => {
         if (err) {
             return res.status(500).send('QR Code page not found');
         }
+        // Ensure the page loads with current origin when proxied
+        res.setHeader('Cache-Control', 'no-cache');
         res.send(data);
     });
 });
