@@ -153,6 +153,13 @@
                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
                                     </div>
                                 </div>
+
+                                <div class="mt-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">API Base URL</label>
+                                    <input type="text" id="apiBaseUrl" value="" placeholder="Örn: https://alanadiniz.com"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <p class="text-xs text-gray-500 mt-1">Boş bırakılırsa sayfanın bulunduğu origin kullanılır</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -325,6 +332,11 @@
             console.log('🚀 Advanced page initializing...');
             setupFileUpload();
             loadUploadedFiles();
+            // Default API base to current origin if input is empty
+            const apiInput = document.getElementById('apiBaseUrl');
+            if (apiInput && !apiInput.value) {
+                apiInput.value = window.location.origin;
+            }
             
             // Debug: Show if files exist
             setTimeout(() => {
@@ -381,7 +393,8 @@
             document.getElementById('uploadProgress').classList.remove('hidden');
             
             try {
-                const response = await fetch('/api/upload', {
+                const base = (document.getElementById('apiBaseUrl')?.value || window.location.origin).trim();
+                const response = await fetch(`${base}/api/upload`, {
                     method: 'POST',
                     body: formData
                 });
@@ -407,7 +420,8 @@
         // Load Uploaded Files
         async function loadUploadedFiles() {
             try {
-                const response = await fetch('/api/files');
+                const base = (document.getElementById('apiBaseUrl')?.value || window.location.origin).trim();
+                const response = await fetch(`${base}/api/files`);
                 const result = await response.json();
                 
                 uploadedFiles = result.files || [];
@@ -495,7 +509,8 @@
             if (!confirm('Bu dosyayı silmek istediğinizden emin misiniz?')) return;
 
             try {
-                const response = await fetch(`/api/files/${filename}`, {
+                const base = (document.getElementById('apiBaseUrl')?.value || window.location.origin).trim();
+                const response = await fetch(`${base}/api/files/${filename}`, {
                     method: 'DELETE'
                 });
                 
@@ -753,8 +768,9 @@
                 const personalizedMessage = messageText.replace('{name}', contact.name);
                 
                 try {
+                    const base = (document.getElementById('apiBaseUrl')?.value || window.location.origin).trim();
                     for (const attachmentFilename of selectedAttachments) {
-                        const response = await fetch(`/message/sendText/${instanceName}`, {
+                        const response = await fetch(`${base}/message/sendText/${instanceName}`, {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({
@@ -779,7 +795,8 @@
                     
                     // If no attachments, send text only
                     if (selectedAttachments.length === 0) {
-                        const response = await fetch(`/message/sendText/${instanceName}`, {
+                        const base = (document.getElementById('apiBaseUrl')?.value || window.location.origin).trim();
+                        const response = await fetch(`${base}/message/sendText/${instanceName}`, {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({
