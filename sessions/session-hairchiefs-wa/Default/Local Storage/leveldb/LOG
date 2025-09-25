@@ -1,3 +1,9 @@
 2025/09/24-06:57:03.895 12a2d Reusing MANIFEST /workspace/sessions/session-hairchiefs-wa/Default/Local Storage/leveldb/MANIFEST-000001
 2025/09/24-06:57:03.895 12a2d Recovering log #3
 2025/09/24-06:57:03.898 12a2d Reusing old log /workspace/sessions/session-hairchiefs-wa/Default/Local Storage/leveldb/000003.log 
+2025/09/24-07:07:11.283 13be2 Level-0 table #5: started
+2025/09/24-07:07:11.286 13be2 Level-0 table #5: 18540 bytes OK
+2025/09/24-07:07:11.287 13be2 Delete type=0 #3
+2025/09/24-23:44:45.693 2f793 Level-0 table #7: started
+2025/09/24-23:44:45.695 2f793 Level-0 table #7: 15048 bytes OK
+2025/09/24-23:44:45.697 2f793 Delete type=0 #4
