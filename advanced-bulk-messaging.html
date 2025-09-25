@@ -6,6 +6,13 @@
     <title>HAIRCHIEFS Gelişmiş Toplu Mesaj Sistemi</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- PDF.js for PDF first-page thumbnail preview -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        if (window['pdfjsLib']) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
     <style>
         .file-drop-zone {
             border: 2px dashed #cbd5e0;
@@ -442,12 +449,30 @@
                 return;
             }
 
-            attachmentList.innerHTML = uploadedFiles.map(file => `
-                <label class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
-                    <input type="checkbox" value="${file.filename}" onchange="toggleAttachment('${file.filename}')" class="attachment-checkbox">
-                    <span class="text-sm">${file.originalname}</span>
-                </label>
-            `).join('');
+            attachmentList.innerHTML = uploadedFiles.map((file, idx) => {
+                const isPdf = (file.originalname || '').toLowerCase().endsWith('.pdf');
+                const canvasId = `pdf_prev_${idx}`;
+                const fileUrl = `/uploads/${file.filename}`;
+                const preview = isPdf
+                    ? `<a href="${fileUrl}" target="_blank" class="flex items-center space-x-3">
+                           <canvas id="${canvasId}" class="bg-white rounded border" style="width:64px;height:90px"></canvas>
+                           <span class="text-sm break-all">${file.originalname}</span>
+                       </a>`
+                    : `<a href="${fileUrl}" target="_blank" class="text-sm break-all">${file.originalname}</a>`;
+                return `
+                    <label class="flex items-center space-x-3 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                        <input type="checkbox" value="${file.filename}" onchange="toggleAttachment('${file.filename}')" class="attachment-checkbox">
+                        ${preview}
+                    </label>
+                `;
+            }).join('');
+
+            // Render thumbnails for PDFs
+            uploadedFiles.forEach((file, idx) => {
+                if ((file.originalname || '').toLowerCase().endsWith('.pdf')) {
+                    renderPdfThumbnail(`/uploads/${file.filename}`, `pdf_prev_${idx}`);
+                }
+            });
         }
 
         // Toggle Attachment Selection
@@ -804,6 +829,25 @@
 
         function formatDate(dateString) {
             return new Date(dateString).toLocaleString('tr-TR');
+        }
+
+        // Render first page of a PDF to canvas
+        async function renderPdfThumbnail(url, canvasId) {
+            try {
+                if (!window['pdfjsLib']) return;
+                const loadingTask = pdfjsLib.getDocument(url);
+                const pdf = await loadingTask.promise;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 0.25 });
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                const context = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({ canvasContext: context, viewport }).promise;
+            } catch (e) {
+                console.warn('PDF preview render failed:', e);
+            }
         }
 
         // Update send button when message changes
