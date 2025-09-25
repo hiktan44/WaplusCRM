@@ -58,9 +58,20 @@ const storage = multer.diskStorage({
         cb(null, './uploads/');
     },
     filename: function (req, file, cb) {
-        // Keep original filename with timestamp prefix
+        // Normalize original filename for UTF-8 (fix browsers sending latin1)
+        const originalUtf8 = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        const parsed = path.parse(originalUtf8);
+        // Normalize Unicode to NFC, keep Turkish chars, remove unsafe chars
+        const base = (parsed.name || 'file')
+            .normalize('NFC')
+            .replace(/[\r\n\t]/g, ' ')
+            .replace(/[\\/:*?"<>|]/g, '-')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const ext = (parsed.ext || '').normalize('NFC');
+        const safeName = `${base}${ext}`;
         const timestamp = Date.now();
-        cb(null, `${timestamp}-${file.originalname}`);
+        cb(null, `${timestamp}-${safeName}`);
     }
 });
 
