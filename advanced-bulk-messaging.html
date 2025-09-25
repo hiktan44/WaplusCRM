@@ -527,30 +527,107 @@
         }
 
         function parseCSV(csvText) {
-            const lines = csvText.trim().split('\\n');
+            const lines = csvText.trim().split('\n');
             contacts = [];
             
-            lines.forEach((line, index) => {
-                const [name, phone] = line.split(',').map(s => s.trim());
-                if (name && phone) {
-                    contacts.push({id: index, name, phone, selected: false});
+            // Header tespiti: ilk satırda 10+ rakam yoksa başlık kabul et
+            let startIndex = 0;
+            if (lines.length > 0 && !/\d{10,}/.test(lines[0])) {
+                startIndex = 1;
+            }
+            
+            for (let i = startIndex; i < lines.length; i++) {
+                const line = lines[i];
+                const parts = line.split(',').map(s => s.trim());
+                let name = '';
+                let phone = '';
+                
+                // Telefon sütununu otomatik bul
+                for (let j = 0; j < parts.length; j++) {
+                    let p = parts[j].toString().replace(/[^\d+]/g, '');
+                    if (p.startsWith('+')) p = p.substring(1);
+                    if (p.startsWith('0') && p.length === 11) p = '9' + p; // 0xxxxxxxxxx -> 90xxxxxxxxxx
+                    else if (p.startsWith('5') && p.length === 10) p = '90' + p;
+                    else if (!p.startsWith('90') && p.length === 10) p = '90' + p;
+                    if (p.length >= 10) {
+                        phone = p;
+                        name = parts.filter((_, idx) => idx !== j).join(' ').trim();
+                        break;
+                    }
                 }
-            });
+                
+                // Fallback: ilk iki kolonu sırayla al
+                if (!phone && parts.length >= 2) {
+                    name = parts[0];
+                    let rawPhone = parts[1].toString().replace(/[^\d+]/g, '');
+                    if (rawPhone.startsWith('+')) rawPhone = rawPhone.substring(1);
+                    if (rawPhone.startsWith('0') && rawPhone.length === 11) phone = '9' + rawPhone;
+                    else if (rawPhone.startsWith('5') && rawPhone.length === 10) phone = '90' + rawPhone;
+                    else if (!rawPhone.startsWith('90') && rawPhone.length === 10) phone = '90' + rawPhone;
+                    else phone = rawPhone;
+                }
+                
+                if (name && phone && phone.length >= 10) {
+                    contacts.push({ id: contacts.length, name, phone, selected: false });
+                }
+            }
             
             updateContactDisplay();
         }
 
         function parseExcel(binaryStr) {
-            const workbook = XLSX.read(binaryStr, {type: 'binary'});
+            const workbook = XLSX.read(binaryStr, { type: 'binary' });
             const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-            
+            const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
             contacts = [];
-            data.forEach((row, index) => {
-                if (row[0] && row[1]) {
-                    contacts.push({id: index, name: row[0], phone: row[1], selected: false});
+            
+            // Header tespiti: ilk satırda 10+ rakam yoksa başlık kabul et
+            let startIndex = 0;
+            if (data.length > 0) {
+                const firstRow = data[0] || [];
+                const hasPhoneLike = firstRow.some(c => (c || '').toString().replace(/\D/g, '').length >= 10);
+                if (!hasPhoneLike) startIndex = 1;
+            }
+            
+            for (let i = startIndex; i < data.length; i++) {
+                const row = data[i] || [];
+                if (!row || row.length === 0) continue;
+                
+                let name = '';
+                let phone = '';
+                
+                // Telefon hücresini otomatik bul
+                for (let j = 0; j < row.length; j++) {
+                    let cell = row[j];
+                    if (cell === null || cell === undefined) continue;
+                    let cleaned = cell.toString().replace(/[^\d+]/g, '');
+                    if (cleaned.startsWith('+')) cleaned = cleaned.substring(1);
+                    if (cleaned.startsWith('0') && cleaned.length === 11) cleaned = '9' + cleaned;
+                    else if (cleaned.startsWith('5') && cleaned.length === 10) cleaned = '90' + cleaned;
+                    else if (!cleaned.startsWith('90') && cleaned.length === 10) cleaned = '90' + cleaned;
+                    if (cleaned.length >= 10) {
+                        phone = cleaned;
+                        name = row.filter((_, idx) => idx !== j && row[idx] !== undefined && row[idx] !== null)
+                                  .join(' ').toString().trim();
+                        break;
+                    }
                 }
-            });
+                
+                // Fallback: ilk iki kolonu sırayla al
+                if (!phone && row[0] && row[1]) {
+                    name = row[0].toString();
+                    let rawPhone = row[1].toString().replace(/[^\d+]/g, '');
+                    if (rawPhone.startsWith('+')) rawPhone = rawPhone.substring(1);
+                    if (rawPhone.startsWith('0') && rawPhone.length === 11) phone = '9' + rawPhone;
+                    else if (rawPhone.startsWith('5') && rawPhone.length === 10) phone = '90' + rawPhone;
+                    else if (!rawPhone.startsWith('90') && rawPhone.length === 10) phone = '90' + rawPhone;
+                    else phone = rawPhone;
+                }
+                
+                if (name && phone && phone.length >= 10) {
+                    contacts.push({ id: contacts.length, name, phone, selected: false });
+                }
+            }
             
             updateContactDisplay();
         }
