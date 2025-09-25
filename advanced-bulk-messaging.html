@@ -526,6 +526,38 @@
             }
         }
 
+        function looksLikeName(text) {
+            if (!text) return false;
+            const s = text.toString().trim();
+            if (s.length < 2) return false;
+            // Ignore if mostly numbers/coordinates or known generic values
+            if (/^[-+\d.,\s]+$/.test(s)) return false;
+            // Require at least one letter (TR chars included)
+            return /[A-Za-zÇĞİÖŞÜçğıöşü]/.test(s);
+        }
+
+        function normalizePhone(raw) {
+            if (!raw) return '';
+            let p = raw.toString().replace(/[^\d+]/g, '');
+            if (p.startsWith('+')) p = p.substring(1);
+            if (p.startsWith('0') && p.length === 11) p = '9' + p;
+            else if (p.startsWith('5') && p.length === 10) p = '90' + p;
+            else if (!p.startsWith('90') && p.length === 10) p = '90' + p;
+            return p;
+        }
+
+        function chooseName(parts, phoneIdx) {
+            // Prefer first meaningful text cell before phone column
+            for (let i = 0; i < parts.length; i++) {
+                if (i === phoneIdx) continue;
+                const val = (parts[i] ?? '').toString().trim();
+                if (looksLikeName(val)) return val.substring(0, 80);
+            }
+            // Fallback to first column
+            const first = (parts[0] ?? '').toString().trim();
+            return first ? first.substring(0, 80) : 'Kayıtsız';
+        }
+
         function parseCSV(csvText) {
             const lines = csvText.trim().split('\n');
             contacts = [];
@@ -539,33 +571,13 @@
             for (let i = startIndex; i < lines.length; i++) {
                 const line = lines[i];
                 const parts = line.split(',').map(s => s.trim());
-                let name = '';
+                let phoneIdx = -1;
                 let phone = '';
-                
-                // Telefon sütununu otomatik bul
                 for (let j = 0; j < parts.length; j++) {
-                    let p = parts[j].toString().replace(/[^\d+]/g, '');
-                    if (p.startsWith('+')) p = p.substring(1);
-                    if (p.startsWith('0') && p.length === 11) p = '9' + p; // 0xxxxxxxxxx -> 90xxxxxxxxxx
-                    else if (p.startsWith('5') && p.length === 10) p = '90' + p;
-                    else if (!p.startsWith('90') && p.length === 10) p = '90' + p;
-                    if (p.length >= 10) {
-                        phone = p;
-                        name = parts.filter((_, idx) => idx !== j).join(' ').trim();
-                        break;
-                    }
+                    const normalized = normalizePhone(parts[j]);
+                    if (normalized.length >= 10) { phoneIdx = j; phone = normalized; break; }
                 }
-                
-                // Fallback: ilk iki kolonu sırayla al
-                if (!phone && parts.length >= 2) {
-                    name = parts[0];
-                    let rawPhone = parts[1].toString().replace(/[^\d+]/g, '');
-                    if (rawPhone.startsWith('+')) rawPhone = rawPhone.substring(1);
-                    if (rawPhone.startsWith('0') && rawPhone.length === 11) phone = '9' + rawPhone;
-                    else if (rawPhone.startsWith('5') && rawPhone.length === 10) phone = '90' + rawPhone;
-                    else if (!rawPhone.startsWith('90') && rawPhone.length === 10) phone = '90' + rawPhone;
-                    else phone = rawPhone;
-                }
+                let name = chooseName(parts, phoneIdx);
                 
                 if (name && phone && phone.length >= 10) {
                     contacts.push({ id: contacts.length, name, phone, selected: false });
@@ -593,36 +605,16 @@
                 const row = data[i] || [];
                 if (!row || row.length === 0) continue;
                 
-                let name = '';
-                let phone = '';
-                
                 // Telefon hücresini otomatik bul
+                let phoneIdx = -1;
+                let phone = '';
                 for (let j = 0; j < row.length; j++) {
-                    let cell = row[j];
-                    if (cell === null || cell === undefined) continue;
-                    let cleaned = cell.toString().replace(/[^\d+]/g, '');
-                    if (cleaned.startsWith('+')) cleaned = cleaned.substring(1);
-                    if (cleaned.startsWith('0') && cleaned.length === 11) cleaned = '9' + cleaned;
-                    else if (cleaned.startsWith('5') && cleaned.length === 10) cleaned = '90' + cleaned;
-                    else if (!cleaned.startsWith('90') && cleaned.length === 10) cleaned = '90' + cleaned;
-                    if (cleaned.length >= 10) {
-                        phone = cleaned;
-                        name = row.filter((_, idx) => idx !== j && row[idx] !== undefined && row[idx] !== null)
-                                  .join(' ').toString().trim();
-                        break;
-                    }
+                    const cleaned = normalizePhone(row[j]);
+                    if (cleaned.length >= 10) { phoneIdx = j; phone = cleaned; break; }
                 }
-                
-                // Fallback: ilk iki kolonu sırayla al
-                if (!phone && row[0] && row[1]) {
-                    name = row[0].toString();
-                    let rawPhone = row[1].toString().replace(/[^\d+]/g, '');
-                    if (rawPhone.startsWith('+')) rawPhone = rawPhone.substring(1);
-                    if (rawPhone.startsWith('0') && rawPhone.length === 11) phone = '9' + rawPhone;
-                    else if (rawPhone.startsWith('5') && rawPhone.length === 10) phone = '90' + rawPhone;
-                    else if (!rawPhone.startsWith('90') && rawPhone.length === 10) phone = '90' + rawPhone;
-                    else phone = rawPhone;
-                }
+
+                // İsim için uygun bir hücre seç
+                const name = chooseName(row, phoneIdx);
                 
                 if (name && phone && phone.length >= 10) {
                     contacts.push({ id: contacts.length, name, phone, selected: false });
