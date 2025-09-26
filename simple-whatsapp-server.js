@@ -16,8 +16,36 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files statically for previews/downloads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// WhatsApp clients storage
+// WhatsApp clients storage (key: `${tenantId}:${instanceName}`)
 const clients = new Map();
+
+// Tenant resolution helpers
+function resolveTenantId(req) {
+    try {
+        const headerTenant = req.headers['x-tenant'];
+        const queryTenant = req.query.tenant;
+        let tenant = (headerTenant || queryTenant || 'public').toString();
+        tenant = tenant.replace(/[^a-zA-Z0-9_-]/g, '').trim() || 'public';
+        return tenant;
+    } catch (_) {
+        return 'public';
+    }
+}
+
+function getClientKey(req, instanceName) {
+    const tenantId = resolveTenantId(req);
+    return `${tenantId}:${instanceName}`;
+}
+
+function ensureDirSync(dirPath) {
+    try {
+        if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
+        }
+    } catch (e) {
+        // noop
+    }
+}
 
 // Unsubscribed phone numbers storage
 let unsubscribedNumbers = new Set();
@@ -55,7 +83,10 @@ loadUnsubscribedNumbers();
 // Multer configuration for file uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, './uploads/');
+        const tenantId = resolveTenantId(req);
+        const dest = path.join(__dirname, 'uploads', tenantId);
+        ensureDirSync(dest);
+        cb(null, dest);
     },
     filename: function (req, file, cb) {
         // Normalize original filename for UTF-8 (fix browsers sending latin1)
@@ -219,19 +250,21 @@ app.get('/api/status', (req, res) => {
     });
 });
 
-// Upload files endpoint
+// Upload files endpoint (tenant-scoped)
 app.post('/api/upload', upload.array('files', 10), (req, res) => {
     try {
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ error: 'No files uploaded' });
         }
 
+        const tenantId = resolveTenantId(req);
         const uploadedFiles = req.files.map(file => ({
             filename: file.filename,
-            originalname: file.originalname,
+            originalname: Buffer.from(file.originalname, 'latin1').toString('utf8'),
             size: file.size,
             mimetype: file.mimetype,
-            path: file.path
+            path: file.path,
+            url: `/uploads/${tenantId}/${file.filename}`
         }));
 
         res.json({
@@ -245,10 +278,12 @@ app.post('/api/upload', upload.array('files', 10), (req, res) => {
     }
 });
 
-// Get uploaded files list
+// Get uploaded files list (tenant-scoped)
 app.get('/api/files', (req, res) => {
     try {
-        const uploadsDir = path.join(__dirname, 'uploads');
+        const tenantId = resolveTenantId(req);
+        const uploadsDir = path.join(__dirname, 'uploads', tenantId);
+        ensureDirSync(uploadsDir);
         const files = fs.readdirSync(uploadsDir)
             .filter(file => file !== '.DS_Store')
             .map(filename => {
@@ -259,7 +294,8 @@ app.get('/api/files', (req, res) => {
                     originalname: filename.replace(/^\d+-/, ''), // Remove timestamp prefix
                     size: stats.size,
                     uploadDate: stats.birthtime,
-                    path: filePath
+                    path: filePath,
+                    url: `/uploads/${tenantId}/${filename}`
                 };
             })
             .sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate));
@@ -274,11 +310,12 @@ app.get('/api/files', (req, res) => {
     }
 });
 
-// Delete uploaded file
+// Delete uploaded file (tenant-scoped)
 app.delete('/api/files/:filename', (req, res) => {
     try {
         const filename = req.params.filename;
-        const filePath = path.join(__dirname, 'uploads', filename);
+        const tenantId = resolveTenantId(req);
+        const filePath = path.join(__dirname, 'uploads', tenantId, filename);
         
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
@@ -301,15 +338,17 @@ app.post('/instance/create', async (req, res) => {
             return res.status(400).json({ error: 'instanceName is required' });
         }
 
-        if (clients.has(instanceName)) {
+        const tenantId = resolveTenantId(req);
+        const clientKey = `${tenantId}:${instanceName}`;
+        if (clients.has(clientKey)) {
             return res.status(409).json({ error: 'Instance already exists' });
         }
 
         // Create WhatsApp client with enhanced config for stability
         const client = new Client({
             authStrategy: new LocalAuth({
-                clientId: instanceName,
-                dataPath: './sessions'
+                clientId: clientKey,
+                dataPath: path.join(__dirname, 'sessions', tenantId)
             }),
             puppeteer: {
                 headless: true,
@@ -344,7 +383,7 @@ app.post('/instance/create', async (req, res) => {
             lastQRTime: 0
         };
         
-        clients.set(instanceName, instanceData);
+        clients.set(clientKey, instanceData);
 
         // QR Code event - only generate once
         client.on('qr', async (qr) => {
@@ -431,7 +470,8 @@ app.post('/instance/create', async (req, res) => {
 app.get('/instance/connect/:instanceName', (req, res) => {
     try {
         const { instanceName } = req.params;
-        const instanceData = clients.get(instanceName);
+        const tenantId = resolveTenantId(req);
+        const instanceData = clients.get(`${tenantId}:${instanceName}`) || clients.get(instanceName);
 
         if (!instanceData) {
             return res.status(404).json({ error: 'Instance not found' });
@@ -466,7 +506,8 @@ app.get('/instance/connect/:instanceName', (req, res) => {
 app.get('/instance/connectionState/:instanceName', (req, res) => {
     try {
         const { instanceName } = req.params;
-        const instanceData = clients.get(instanceName);
+        const tenantId = resolveTenantId(req);
+        const instanceData = clients.get(`${tenantId}:${instanceName}`) || clients.get(instanceName);
 
         if (!instanceData) {
             return res.status(404).json({ error: 'Instance not found' });
@@ -498,7 +539,8 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
         const { instanceName } = req.params;
         const { number, text, delay, attachment, attachments } = req.body;
 
-        const instanceData = clients.get(instanceName);
+        const tenantId = resolveTenantId(req);
+        const instanceData = clients.get(`${tenantId}:${instanceName}`) || clients.get(instanceName);
         if (!instanceData || !instanceData.isReady) {
             return res.status(400).json({ error: 'Instance not connected' });
         }
@@ -596,7 +638,7 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
 
         // Send message with attachments - Prefer rich preview for PDFs by sending a JPG/PNG thumbnail first
         if (filesToSend.length > 0) {
-            const firstAttachmentPath = path.join(__dirname, 'uploads', filesToSend[0]);
+            const firstAttachmentPath = path.join(__dirname, 'uploads', tenantId, filesToSend[0]);
             
             if (fs.existsSync(firstAttachmentPath)) {
                 try {
@@ -642,7 +684,7 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
                     // Send additional attachments if any (without caption)
                     for (let i = 1; i < filesToSend.length; i++) {
                         const filename = filesToSend[i];
-                        const attachmentPath = path.join(__dirname, 'uploads', filename);
+                        const attachmentPath = path.join(__dirname, 'uploads', tenantId, filename);
                         
                         if (fs.existsSync(attachmentPath)) {
                             try {
