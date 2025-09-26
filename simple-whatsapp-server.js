@@ -87,6 +87,124 @@ function requireApiKey(paths) {
 // Protect instance/message and file APIs (status remains open)
 app.use(requireApiKey(['/instance', '/message', '/api/upload', '/api/files']));
 
+// ----------------------
+// Quota & Rate Limiting
+// ----------------------
+const USAGE_FILE = path.join(__dirname, 'usage.json');
+let usageData = { tenants: {} };
+
+function loadUsage() {
+    try {
+        if (fs.existsSync(USAGE_FILE)) {
+            usageData = JSON.parse(fs.readFileSync(USAGE_FILE, 'utf8')) || { tenants: {} };
+        }
+    } catch (e) {
+        usageData = { tenants: {} };
+    }
+}
+
+function saveUsage() {
+    try {
+        fs.writeFileSync(USAGE_FILE, JSON.stringify(usageData, null, 2));
+    } catch (_) {}
+}
+
+function getPeriodKeys() {
+    const now = new Date();
+    const dayKey = now.toISOString().slice(0, 10); // YYYY-MM-DD
+    const monthKey = now.toISOString().slice(0, 7); // YYYY-MM
+    const nowMs = now.getTime();
+    return { dayKey, monthKey, nowMs };
+}
+
+function getTenantPlan(tenantId) {
+    const defaults = { dailyLimit: 1000, monthlyLimit: 50000, ratePerMinute: 20 };
+    try {
+        const envPlans = process.env.TENANT_PLANS ? JSON.parse(process.env.TENANT_PLANS) : {};
+        const p = envPlans[tenantId];
+        const cfg = (usageData.tenants[tenantId] && usageData.tenants[tenantId].planConfig) || {};
+        return { ...defaults, ...p, ...cfg };
+    } catch (_) {
+        const cfg = (usageData.tenants[tenantId] && usageData.tenants[tenantId].planConfig) || {};
+        return { ...defaults, ...cfg };
+    }
+}
+
+function getTenantUsage(tenantId) {
+    if (!usageData.tenants[tenantId]) {
+        usageData.tenants[tenantId] = {
+            dayKey: '', dayCount: 0,
+            monthKey: '', monthCount: 0,
+            minuteWindowStart: 0, minuteCount: 0,
+            planConfig: undefined,
+        };
+    }
+    const u = usageData.tenants[tenantId];
+    const { dayKey, monthKey, nowMs } = getPeriodKeys();
+    if (u.dayKey !== dayKey) { u.dayKey = dayKey; u.dayCount = 0; }
+    if (u.monthKey !== monthKey) { u.monthKey = monthKey; u.monthCount = 0; }
+    // Reset minute window after 60s
+    if (nowMs - u.minuteWindowStart > 60_000) { u.minuteWindowStart = nowMs; u.minuteCount = 0; }
+    return u;
+}
+
+function incrementTenantUsage(tenantId, n = 1) {
+    const u = getTenantUsage(tenantId);
+    u.dayCount += n;
+    u.monthCount += n;
+    u.minuteCount += n;
+    saveUsage();
+}
+
+function requireQuotaAndRateLimit() {
+    return (req, res, next) => {
+        const tenantId = resolveTenantId(req);
+        const plan = getTenantPlan(tenantId);
+        const u = getTenantUsage(tenantId);
+        // Rate limit first
+        if (u.minuteCount >= plan.ratePerMinute) {
+            return res.status(429).json({ error: 'Rate limit exceeded', limit: plan.ratePerMinute, window: '1m' });
+        }
+        // Quota gating (pre-send)
+        if (u.dayCount >= plan.dailyLimit) {
+            return res.status(429).json({ error: 'Daily quota exceeded', dailyLimit: plan.dailyLimit });
+        }
+        if (u.monthCount >= plan.monthlyLimit) {
+            return res.status(429).json({ error: 'Monthly quota exceeded', monthlyLimit: plan.monthlyLimit });
+        }
+        return next();
+    };
+}
+
+loadUsage();
+app.use('/message', requireQuotaAndRateLimit());
+
+// Usage endpoints
+app.get('/billing/usage', (req, res) => {
+    const tenantId = resolveTenantId(req);
+    const u = getTenantUsage(tenantId);
+    const plan = getTenantPlan(tenantId);
+    res.json({ tenantId, usage: { dayKey: u.dayKey, dayCount: u.dayCount, monthKey: u.monthKey, monthCount: u.monthCount, minuteCount: u.minuteCount }, plan });
+});
+
+app.post('/billing/plan', (req, res) => {
+    try {
+        const tenantId = resolveTenantId(req);
+        const { dailyLimit, monthlyLimit, ratePerMinute } = req.body || {};
+        const u = getTenantUsage(tenantId);
+        u.planConfig = {
+            ...(u.planConfig || {}),
+            ...(dailyLimit ? { dailyLimit } : {}),
+            ...(monthlyLimit ? { monthlyLimit } : {}),
+            ...(ratePerMinute ? { ratePerMinute } : {}),
+        };
+        saveUsage();
+        res.json({ message: 'Plan updated', tenantId, plan: getTenantPlan(tenantId) });
+    } catch (e) {
+        res.status(400).json({ error: 'Invalid plan payload' });
+    }
+});
+
 // Unsubscribed phone numbers storage
 let unsubscribedNumbers = new Set();
 
@@ -786,6 +904,9 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
                 throw new Error(`Message sending failed: ${msgError.message}`);
             }
         }
+
+        // Increment usage on success (1 message per recipient)
+        try { incrementTenantUsage(tenantId, 1); } catch (_) {}
 
         res.json({
             key: {
