@@ -185,7 +185,9 @@
                 const response = await fetch(`${apiBaseUrl}/instance/create`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'x-tenant': (localStorage.getItem('tenantId') || 'public'),
+                        'x-api-key': (localStorage.getItem('apiKey') || '')
                     },
                     body: JSON.stringify({
                         instanceName: instanceName
@@ -238,7 +240,9 @@
                 const response = await fetch(`${apiBaseUrl}/instance/connect/${instanceName}`, {
                     method: 'GET',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'x-tenant': (localStorage.getItem('tenantId') || 'public'),
+                        'x-api-key': (localStorage.getItem('apiKey') || '')
                     }
                 });
 
@@ -316,7 +320,9 @@
                 const response = await fetch(`${apiBaseUrl}/instance/connectionState/${instanceName}`, {
                     method: 'GET',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'x-tenant': (localStorage.getItem('tenantId') || 'public'),
+                        'x-api-key': (localStorage.getItem('apiKey') || '')
                     }
                 });
 

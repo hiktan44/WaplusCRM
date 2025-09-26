@@ -155,6 +155,7 @@
     </div>
 
     <script>
+        const fileUrlByName = {};
         const templates = {
             partnership: `💫 Merhaba {name}! ✨
 
@@ -603,7 +604,11 @@
                 try {
                     const response = await fetch(`/message/sendText/${currentInstance}`, {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-tenant': (localStorage.getItem('tenantId') || 'public'),
+                            'x-api-key': (localStorage.getItem('apiKey') || '')
+                        },
                         body: JSON.stringify({
                             number: contact.phone,
                             text: personalizedMessage,
@@ -665,6 +670,10 @@
             try {
                 const response = await fetch('/api/upload', {
                     method: 'POST',
+                    headers: {
+                        'x-tenant': (localStorage.getItem('tenantId') || 'public'),
+                        'x-api-key': (localStorage.getItem('apiKey') || '')
+                    },
                     body: formData
                 });
 
@@ -684,7 +693,12 @@
         // Load available files as checkboxes
         async function loadAvailableFiles() {
             try {
-                const response = await fetch('/api/files');
+                const response = await fetch('/api/files', {
+                    headers: {
+                        'x-tenant': (localStorage.getItem('tenantId') || 'public'),
+                        'x-api-key': (localStorage.getItem('apiKey') || '')
+                    }
+                });
                 const result = await response.json();
                 
                 const container = document.getElementById('availableFilesList');
@@ -696,6 +710,9 @@
                 container.innerHTML = '';
                 
                 result.files.forEach(file => {
+                    if (file && file.filename) {
+                        fileUrlByName[file.filename] = file.url || `/uploads/${(localStorage.getItem('tenantId') || 'public')}/${file.filename}`;
+                    }
                     const icon = getFileIcon(file.originalname);
                     const div = document.createElement('div');
                     div.className = 'flex items-center space-x-2';
@@ -782,7 +799,8 @@
         function generateSelectedFileItemHTML(filename, index) {
             const isPdf = filename.toLowerCase().endsWith('.pdf');
             const icon = getFileIcon(filename);
-            const fileUrl = `/uploads/${filename}`;
+            const tenantId = (localStorage.getItem('tenantId') || 'public');
+            const fileUrl = fileUrlByName[filename] || `/uploads/${tenantId}/${filename}`;
             const preview = isPdf
                 ? `<a href="${fileUrl}" target="_blank" class="flex items-center space-x-3">
                         <canvas id="pdf_thumb_${index}" class="bg-white rounded border" style="width:64px;height:90px"></canvas>

@@ -47,6 +47,46 @@ function ensureDirSync(dirPath) {
     }
 }
 
+// API key middleware (per-tenant). Environment variable TENANT_KEYS should be JSON: {"tenant":"APIKEY", ...}
+function getTenantKeys() {
+    try {
+        if (!process.env.TENANT_KEYS) return {};
+        return JSON.parse(process.env.TENANT_KEYS);
+    } catch (_) {
+        return {};
+    }
+}
+
+function requireApiKey(paths) {
+    const tenantKeys = getTenantKeys();
+    const protectedPaths = paths || [];
+    return (req, res, next) => {
+        try {
+            // Skip if not protected path
+            if (!protectedPaths.some(p => req.path.startsWith(p))) return next();
+
+            // Always allow health/status endpoints
+            if (req.path === '/api/status') return next();
+
+            // If no keys configured, allow (development mode)
+            if (Object.keys(tenantKeys).length === 0) return next();
+
+            const tenantId = resolveTenantId(req);
+            const provided = (req.headers['x-api-key'] || '').toString();
+            const expected = tenantKeys[tenantId];
+            if (!expected || provided !== expected) {
+                return res.status(401).json({ error: 'Unauthorized: invalid API key', tenant: tenantId });
+            }
+            return next();
+        } catch (e) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+    };
+}
+
+// Protect instance/message and file APIs (status remains open)
+app.use(requireApiKey(['/instance', '/message', '/api/upload', '/api/files']));
+
 // Unsubscribed phone numbers storage
 let unsubscribedNumbers = new Set();
 
