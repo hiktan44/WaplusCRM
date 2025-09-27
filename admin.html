@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WaPlus CRM - Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <h1 class="text-2xl font-bold mb-6">⚙️ Admin Panel</h1>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-xl shadow">
+                <h2 class="font-semibold mb-4">Tenant & API Key</h2>
+                <div class="space-y-3">
+                    <input id="tenantId" class="w-full border px-3 py-2 rounded" placeholder="tenant id (örn: demo)">
+                    <input id="apiKey" class="w-full border px-3 py-2 rounded" placeholder="api key (örn: DEMO_KEY)">
+                    <input id="adminKey" class="w-full border px-3 py-2 rounded" placeholder="x-admin-key">
+                    <div class="flex space-x-2">
+                        <button onclick="saveKey()" class="bg-blue-600 text-white px-4 py-2 rounded">Kaydet</button>
+                        <button onclick="loadKey()" class="bg-gray-600 text-white px-4 py-2 rounded">Yükle</button>
+                        <button onclick="applyToLocal()" class="bg-green-600 text-white px-4 py-2 rounded">Tarayıcıya Uygula</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow">
+                <h2 class="font-semibold mb-4">Kullanım</h2>
+                <pre id="usage" class="bg-gray-100 rounded p-3 text-sm"></pre>
+                <div class="space-y-3 mt-3">
+                    <button onclick="fetchUsage()" class="bg-gray-700 text-white px-4 py-2 rounded">Güncelle</button>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input id="daily" class="border px-2 py-1 rounded" placeholder="günlük">
+                        <input id="monthly" class="border px-2 py-1 rounded" placeholder="aylık">
+                        <input id="rpm" class="border px-2 py-1 rounded" placeholder="/dk">
+                    </div>
+                    <button onclick="updatePlan()" class="bg-purple-600 text-white px-4 py-2 rounded">Planı Güncelle</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow mt-6">
+            <h2 class="font-semibold mb-4">Stripe Checkout</h2>
+            <div class="grid md:grid-cols-3 gap-3">
+                <input id="priceId" class="border px-3 py-2 rounded" placeholder="price_xxx">
+                <input id="successUrl" class="border px-3 py-2 rounded" placeholder="başarılı URL (opsiyonel)">
+                <input id="cancelUrl" class="border px-3 py-2 rounded" placeholder="iptal URL (opsiyonel)">
+            </div>
+            <button onclick="startCheckout()" class="mt-3 bg-indigo-600 text-white px-4 py-2 rounded">Checkout Başlat</button>
+        </div>
+    </div>
+
+    <script>
+        function originBase() { return window.location.origin; }
+        function headers() {
+            return {
+                'Content-Type': 'application/json',
+                'x-tenant': (document.getElementById('tenantId').value || localStorage.getItem('tenantId') || 'public'),
+                'x-api-key': (document.getElementById('apiKey').value || localStorage.getItem('apiKey') || ''),
+                'x-admin-key': (document.getElementById('adminKey').value || '')
+            };
+        }
+
+        function applyToLocal() {
+            const t = document.getElementById('tenantId').value;
+            const k = document.getElementById('apiKey').value;
+            if (t) localStorage.setItem('tenantId', t);
+            if (k) localStorage.setItem('apiKey', k);
+            alert('Kaydedildi (tarayıcı)');
+        }
+
+        async function saveKey() {
+            const res = await fetch(originBase() + '/admin/tenant/key', {
+                method: 'POST', headers: headers(),
+                body: JSON.stringify({ tenantId: document.getElementById('tenantId').value, apiKey: document.getElementById('apiKey').value })
+            });
+            alert(await res.text());
+        }
+
+        async function loadKey() {
+            const t = document.getElementById('tenantId').value;
+            const res = await fetch(originBase() + '/admin/tenant/key/' + encodeURIComponent(t), { headers: headers() });
+            const data = await res.json();
+            document.getElementById('apiKey').value = data.apiKey || '';
+        }
+
+        async function fetchUsage() {
+            const res = await fetch(originBase() + '/billing/usage', { headers: headers() });
+            const data = await res.json();
+            document.getElementById('usage').textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function updatePlan() {
+            const body = {
+                dailyLimit: parseInt(document.getElementById('daily').value || 0) || undefined,
+                monthlyLimit: parseInt(document.getElementById('monthly').value || 0) || undefined,
+                ratePerMinute: parseInt(document.getElementById('rpm').value || 0) || undefined,
+            };
+            const res = await fetch(originBase() + '/billing/plan', { method: 'POST', headers: headers(), body: JSON.stringify(body) });
+            const data = await res.json();
+            alert('Plan güncellendi');
+            document.getElementById('usage').textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function startCheckout() {
+            const res = await fetch(originBase() + '/billing/checkout', {
+                method: 'POST', headers: headers(),
+                body: JSON.stringify({ priceId: document.getElementById('priceId').value, successUrl: document.getElementById('successUrl').value, cancelUrl: document.getElementById('cancelUrl').value })
+            });
+            const data = await res.json();
+            if (data.url) { window.location.href = data.url; } else { alert(JSON.stringify(data)); }
+        }
+
+        // Prefill from localStorage
+        window.addEventListener('load', () => {
+            document.getElementById('tenantId').value = localStorage.getItem('tenantId') || 'public';
+            document.getElementById('apiKey').value = localStorage.getItem('apiKey') || '';
+            fetchUsage();
+        });
+    </script>
+</body>
+</html>

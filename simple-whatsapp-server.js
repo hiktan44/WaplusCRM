@@ -485,6 +485,16 @@ app.get('/qr', (req, res) => {
     });
 });
 
+// Serve Admin page
+app.get('/admin', (req, res) => {
+    const filePath = path.join(__dirname, 'admin.html');
+    fs.readFile(filePath, 'utf8', (err, data) => {
+        if (err) return res.status(500).send('Admin page not found');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.send(data);
+    });
+});
+
 // Serve Bulk Message page
 app.get('/bulk', (req, res) => {
     const filePath = path.join(__dirname, 'bulk-message-with-attachments.html');
