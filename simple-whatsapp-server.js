@@ -5,6 +5,7 @@ const qrcode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+let stripe = null;
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -202,6 +203,83 @@ app.post('/billing/plan', (req, res) => {
         res.json({ message: 'Plan updated', tenantId, plan: getTenantPlan(tenantId) });
     } catch (e) {
         res.status(400).json({ error: 'Invalid plan payload' });
+    }
+});
+
+// ----------------------
+// Stripe Checkout + Webhook (optional)
+// ----------------------
+function getStripe() {
+    if (stripe) return stripe;
+    if (!process.env.STRIPE_SECRET) return null;
+    // Lazy require to avoid dependency when not installed
+    try {
+        const Stripe = require('stripe');
+        stripe = new Stripe(process.env.STRIPE_SECRET, { apiVersion: '2024-06-20' });
+        return stripe;
+    } catch (_) {
+        return null;
+    }
+}
+
+const PLAN_QUOTAS = {
+    free:    { dailyLimit: 200,  monthlyLimit: 5000,  ratePerMinute: 10 },
+    pro:     { dailyLimit: 2000, monthlyLimit: 60000, ratePerMinute: 40 },
+    growth:  { dailyLimit: 10000, monthlyLimit: 300000, ratePerMinute: 80 },
+};
+
+app.post('/billing/checkout', async (req, res) => {
+    try {
+        const tenantId = resolveTenantId(req);
+        const { priceId, successUrl, cancelUrl } = req.body || {};
+        const s = getStripe();
+        if (!s) return res.status(400).json({ error: 'Stripe not configured' });
+        if (!priceId) return res.status(400).json({ error: 'priceId is required' });
+
+        const session = await s.checkout.sessions.create({
+            mode: 'subscription',
+            line_items: [{ price: priceId, quantity: 1 }],
+            success_url: successUrl || `${req.protocol}://${req.get('host')}/billing/success`,
+            cancel_url: cancelUrl || `${req.protocol}://${req.get('host')}/billing/cancel`,
+            metadata: { tenantId },
+        });
+        res.json({ url: session.url });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/billing/stripe-webhook', express.raw({ type: 'application/json' }), (req, res) => {
+    try {
+        const s = getStripe();
+        if (!s) return res.status(400).send('Stripe not configured');
+        const sig = req.headers['stripe-signature'];
+        const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+        let event;
+        try {
+            event = s.webhooks.constructEvent(req.body, sig, endpointSecret);
+        } catch (err) {
+            return res.status(400).send(`Webhook Error: ${err.message}`);
+        }
+
+        if (event.type === 'checkout.session.completed' || event.type === 'customer.subscription.updated') {
+            const obj = event.data.object;
+            const metadata = obj.metadata || {};
+            const tenantId = metadata.tenantId;
+            if (tenantId) {
+                const priceId = (obj.items && obj.items.data && obj.items.data[0] && obj.items.data[0].price && obj.items.data[0].price.id) || obj['price'] || '';
+                // Map priceId to plan key (adjust mapping externally if needed)
+                const planKey = process.env.PLAN_PRICE_MAP ? (JSON.parse(process.env.PLAN_PRICE_MAP)[priceId] || 'pro') : 'pro';
+                const quotas = PLAN_QUOTAS[planKey] || PLAN_QUOTAS.pro;
+                const u = getTenantUsage(tenantId);
+                u.planConfig = { ...u.planConfig, ...quotas };
+                saveUsage();
+            }
+        }
+
+        res.json({ received: true });
+    } catch (e) {
+        res.status(500).send('Webhook handler error');
     }
 });
 
