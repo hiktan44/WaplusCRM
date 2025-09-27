@@ -1,2 +1,3 @@
-2025/09/27-05:09:17.896 67514 Creating DB /workspace/sessions/public/session-public-hairchiefs-wa/Default/Local Storage/leveldb since it was missing.
-2025/09/27-05:09:17.903 67514 Reusing MANIFEST /workspace/sessions/public/session-public-hairchiefs-wa/Default/Local Storage/leveldb/MANIFEST-000001
+2025/09/27-06:17:46.684 69c4b Reusing MANIFEST /workspace/sessions/public/session-public-hairchiefs-wa/Default/Local Storage/leveldb/MANIFEST-000001
+2025/09/27-06:17:46.684 69c4b Recovering log #3
+2025/09/27-06:17:46.684 69c4b Reusing old log /workspace/sessions/public/session-public-hairchiefs-wa/Default/Local Storage/leveldb/000003.log 
