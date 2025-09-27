@@ -12,7 +12,14 @@ const app = express();
 const port = process.env.PORT || 8080;
 
 // Middleware
-app.use(cors());
+const ALLOWED_ORIGINS = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map(s => s.trim()) : ['*'];
+app.use(cors({
+    origin: function(origin, cb) {
+        if (!origin || ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+        return cb(null, false);
+    },
+    credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files statically for previews/downloads
