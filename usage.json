@@ -2,11 +2,11 @@
   "tenants": {
     "public": {
       "dayKey": "2025-09-27",
-      "dayCount": 2,
+      "dayCount": 9,
       "monthKey": "2025-09",
-      "monthCount": 2,
-      "minuteWindowStart": 1758949880107,
-      "minuteCount": 2
+      "monthCount": 9,
+      "minuteWindowStart": 1758981700046,
+      "minuteCount": 4
     }
   }
 }
