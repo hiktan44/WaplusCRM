@@ -155,3 +155,28 @@ This project is licensed under the ISC License.
 ---
 
 *Professional bulk messaging solution for growing your business* 🚀
+
+## 🔌 Evolution API (Opsiyonel)
+
+Neden Evolution API?
+- Daha az operasyonel yük: Headless tarayıcı (Puppeteer) yerine hafif bir protokol yığını ile çalışır; RAM/CPU tüketimi düşer.
+- Hazır REST/Webhook katmanı: Instance açma/QR, mesaj/medya gönderimi ve olay webhooks için standart HTTP/WS arayüzü.
+- Çoklu oturum yönetimi: Birden fazla WhatsApp oturumunu tek serviste ölçeklenebilir şekilde yönetir.
+- Sürüm/uyumluluk: WhatsApp Web tarafındaki değişikliklere karşı merkezi güncellemelerle daha stabil entegrasyon.
+- Gözlemlenebilirlik: Sağlık, log ve (çoğu dağıtımda) Swagger/OpenAPI ile hızlı entegrasyon/testing.
+
+Blok/ban konusunda gerçekçi not:
+- Hiçbir çözüm (Evolution API dahil) bloklanmayı garantili şekilde engellemez. Ancak oran sınırlama, gecikme ve kuyruklama gibi pratiklerle riski azaltmayı kolaylaştırır. Opt‑in listeler, içerik kalitesi, hız limitleri ve unsubscribe mekanizması kritik önemdedir.
+
+Hızlı Kullanım (özet mimari)
+1) Evolution API’yi kendi sunucunuza/sağlayıcıya kurun veya yönetilen sürümü kullanın.
+2) Bu projedeki WhatsApp gönderim katmanını Evolution API’ye yönlendirin (proxy/entegrasyon):
+   - Mesaj uçları: `/message/sendText/:instanceName` → Evolution API’nin ilgili REST uçlarına çağrı yapacak şekilde uyarlayın (örn. `POST /message/send`).
+   - Instance/QR akışı: `/instance/create`, `/instance/connect/:name` uçlarını Evolution API’nin instance yönetim uçlarına bağlayın.
+   - Webhooklar: Gelen olayları (delivered, read, message-in) dinlemek için Evolution API webhook URL’sini backend’inize ekleyin.
+3) Kota ve hız limiti: Bu projede yer alan tenant bazlı kota/rate-limit katmanı Evolution API’nin üstünde de çalışır; sadece çağrı hedefini değiştirirsiniz.
+
+Notlar
+- CORS ve güvenlik: Evolution API alan adınızı `CORS_ORIGINS` değişkenine eklemeyi unutmayın.
+- Çoklu‑tenant: Mevcut `x-tenant` ve `x-api-key` başlıklarıyla her tenant’ı izole ederek Evolution API çağrılarını da aynı modelde yapabilirsiniz.
+- Geçiş stratejisi: Önce tek instance’ı Evolution API ile doğrulayın, ardından tüm gönderimleri kademeli olarak taşıyın.
