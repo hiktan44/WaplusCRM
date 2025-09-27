@@ -134,3 +134,12 @@
 2025/09/27-06:50:36.172 6b0ed compacted to: files[ 0 0 1 0 0 0 0 ]
 2025/09/27-06:50:36.173 6b0ed Delete type=2 #37
 2025/09/27-06:50:36.173 6b0ed Delete type=2 #35
+2025/09/27-08:42:53.661 6dbe8 Level-0 table #40: started
+2025/09/27-08:42:53.681 6dbe8 Level-0 table #40: 1160132 bytes OK
+2025/09/27-08:42:53.687 6dbe8 Delete type=0 #36
+2025/09/27-08:43:39.420 6dfb5 Compacting 1@1 + 1@2 files
+2025/09/27-08:43:39.435 6dfb5 Generated table #41@1: 7869 keys, 461142 bytes
+2025/09/27-08:43:39.435 6dfb5 Compacted 1@1 + 1@2 files => 461142 bytes
+2025/09/27-08:43:39.436 6dfb5 compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/09/27-08:43:39.436 6dfb5 Delete type=2 #40
+2025/09/27-08:43:39.436 6dfb5 Delete type=2 #38
