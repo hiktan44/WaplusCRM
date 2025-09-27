@@ -1,0 +1,21 @@
+version: '3.9'
+services:
+  waplus-crm:
+    build: .
+    container_name: waplus-crm
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - TENANT_KEYS=${TENANT_KEYS:-{"public":"PUBLIC_API_KEY"}}
+      - TENANT_PLANS=${TENANT_PLANS:-{"public":{"dailyLimit":1000,"monthlyLimit":50000,"ratePerMinute":20}}}
+      - STRIPE_SECRET=${STRIPE_SECRET}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - PLAN_PRICE_MAP=${PLAN_PRICE_MAP}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./sessions:/app/sessions
+      - ./uploads:/app/uploads
+      - ./web-ui/dist:/app/web-ui/dist
+    restart: unless-stopped
