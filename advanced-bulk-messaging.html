@@ -174,6 +174,21 @@
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
                                     <p class="text-xs text-gray-500 mt-1">Boş bırakılırsa sayfanın bulunduğu origin kullanılır</p>
                                 </div>
+
+                                <!-- Sender Numbers -->
+                                <div id="sendersSection" class="mt-4 bg-white rounded-lg border p-4">
+                                    <h3 class="text-sm font-semibold text-gray-700 mb-2">📱 Gönderen Numaralar</h3>
+                                    <div class="grid md:grid-cols-3 gap-2 mb-3">
+                                        <input id="senderInput" class="w-full px-3 py-2 border rounded" placeholder="90555... veya +9055...">
+                                        <button onclick="addSender()" class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700">Ekle</button>
+                                        <button onclick="deleteSender()" class="bg-red-600 text-white px-3 py-2 rounded hover:bg-red-700">Sil</button>
+                                    </div>
+                                    <div class="grid md:grid-cols-2 gap-2">
+                                        <select id="senderSelect" class="w-full px-3 py-2 border rounded"></select>
+                                        <button onclick="applySender()" class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700">Göndereni Seç</button>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-2">Seçtiğiniz gönderen, mevcut instance adınızın sonuna eklenmiş profil/hız akışını temsil eder. Çoklu hat kullanıyorsanız her bir hat için ayrı instance oluşturmanız önerilir.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -781,7 +796,13 @@
             const selectedContactList = contacts.filter(c => c.selected);
             const messageText = document.getElementById('messageTemplate').value.trim();
             const delay = parseInt(document.getElementById('delayInput').value);
-            const instanceName = document.getElementById('instanceName').value;
+            let instanceName = document.getElementById('instanceName').value;
+            const selectedSender = localStorage.getItem('waPlusCRM_selected_sender') || '';
+            // Eğer gönderen seçiliyse instance adına suffix olarak ekleyip ayrıştırma kolaylığı sağlayın
+            if (selectedSender) {
+                const safe = selectedSender.replace(/[^\d]/g, '');
+                if (safe) instanceName = `${instanceName}-${safe}`;
+            }
             
             if (selectedContactList.length === 0) {
                 alert('Lütfen en az bir kişi seçin!');
@@ -896,6 +917,8 @@
         // Templates Library (localStorage)
         // -----------------------------
         const TEMPLATE_PREFIX = 'waPlusCRM_template_';
+        const SENDERS_KEY = 'waPlusCRM_senders';
+        const SELECTED_SENDER_KEY = 'waPlusCRM_selected_sender';
 
         function listStoredTemplates() {
             const items = [];
@@ -989,6 +1012,68 @@
             const hasAny = listStoredTemplates().length > 0;
             if (hasAny) return;
             defaults.forEach(t => saveTemplateToStorage(t.n, t.c));
+        }
+
+        // -----------------------------
+        // Sender numbers (localStorage)
+        // -----------------------------
+        function listSenders() {
+            try {
+                const arr = JSON.parse(localStorage.getItem(SENDERS_KEY) || '[]');
+                return Array.isArray(arr) ? arr : [];
+            } catch(_) { return []; }
+        }
+
+        function saveSenders(arr) {
+            localStorage.setItem(SENDERS_KEY, JSON.stringify(arr));
+        }
+
+        function normalizePhone(raw) {
+            if (!raw) return '';
+            let p = raw.toString().replace(/[^\d+]/g, '');
+            if (p.startsWith('+')) p = p.substring(1);
+            if (p.startsWith('0') && p.length === 11) p = '9' + p;
+            else if (p.startsWith('5') && p.length === 10) p = '90' + p;
+            else if (!p.startsWith('90') && p.length === 10) p = '90' + p;
+            return p;
+        }
+
+        function renderSenderSelect() {
+            const sel = document.getElementById('senderSelect');
+            if (!sel) return;
+            const arr = listSenders();
+            const current = localStorage.getItem(SELECTED_SENDER_KEY) || '';
+            sel.innerHTML = arr.length ? arr.map(v => `<option value="${v}" ${v===current?'selected':''}>${v}</option>`).join('') : '<option value="">(Kayıtlı gönderici yok)</option>';
+        }
+
+        function addSender() {
+            const raw = document.getElementById('senderInput').value.trim();
+            const n = normalizePhone(raw);
+            if (n.length < 10) return alert('Geçerli bir numara girin');
+            const arr = listSenders();
+            if (!arr.includes(n)) arr.push(n);
+            saveSenders(arr);
+            renderSenderSelect();
+            document.getElementById('senderInput').value = '';
+        }
+
+        function deleteSender() {
+            const sel = document.getElementById('senderSelect');
+            const v = sel && sel.value;
+            if (!v) return;
+            if (!confirm('Seçili gönderici silinsin mi?')) return;
+            const arr = listSenders().filter(x => x !== v);
+            saveSenders(arr);
+            if ((localStorage.getItem(SELECTED_SENDER_KEY) || '') === v) localStorage.removeItem(SELECTED_SENDER_KEY);
+            renderSenderSelect();
+        }
+
+        function applySender() {
+            const sel = document.getElementById('senderSelect');
+            const v = sel && sel.value;
+            if (!v) return;
+            localStorage.setItem(SELECTED_SENDER_KEY, v);
+            alert('Gönderen seçildi: ' + v);
         }
 
         // Render first page of a PDF to canvas
