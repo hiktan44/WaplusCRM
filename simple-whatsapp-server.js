@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 let stripe = null;
+const TENANT_KEYS_FILE = path.join(__dirname, 'tenant-keys.json');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -51,8 +52,12 @@ function ensureDirSync(dirPath) {
 // API key middleware (per-tenant). Environment variable TENANT_KEYS should be JSON: {"tenant":"APIKEY", ...}
 function getTenantKeys() {
     try {
-        if (!process.env.TENANT_KEYS) return {};
-        return JSON.parse(process.env.TENANT_KEYS);
+        const envKeys = process.env.TENANT_KEYS ? JSON.parse(process.env.TENANT_KEYS) : {};
+        let fileKeys = {};
+        if (fs.existsSync(TENANT_KEYS_FILE)) {
+            fileKeys = JSON.parse(fs.readFileSync(TENANT_KEYS_FILE, 'utf8')) || {};
+        }
+        return { ...envKeys, ...fileKeys };
     } catch (_) {
         return {};
     }
@@ -203,6 +208,44 @@ app.post('/billing/plan', (req, res) => {
         res.json({ message: 'Plan updated', tenantId, plan: getTenantPlan(tenantId) });
     } catch (e) {
         res.status(400).json({ error: 'Invalid plan payload' });
+    }
+});
+
+// Admin endpoints to manage tenant API keys (protect behind a simple admin key)
+app.post('/admin/tenant/key', (req, res) => {
+    try {
+        const adminKey = req.headers['x-admin-key'];
+        if (!process.env.ADMIN_KEY || adminKey !== process.env.ADMIN_KEY) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const { tenantId, apiKey } = req.body || {};
+        if (!tenantId || !apiKey) return res.status(400).json({ error: 'tenantId and apiKey required' });
+        let current = {};
+        if (fs.existsSync(TENANT_KEYS_FILE)) {
+            current = JSON.parse(fs.readFileSync(TENANT_KEYS_FILE, 'utf8')) || {};
+        }
+        current[tenantId] = apiKey;
+        fs.writeFileSync(TENANT_KEYS_FILE, JSON.stringify(current, null, 2));
+        res.json({ message: 'Key saved', tenantId });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/admin/tenant/key/:tenantId', (req, res) => {
+    try {
+        const adminKey = req.headers['x-admin-key'];
+        if (!process.env.ADMIN_KEY || adminKey !== process.env.ADMIN_KEY) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const tenantId = req.params.tenantId;
+        let current = {};
+        if (fs.existsSync(TENANT_KEYS_FILE)) {
+            current = JSON.parse(fs.readFileSync(TENANT_KEYS_FILE, 'utf8')) || {};
+        }
+        res.json({ tenantId, apiKey: current[tenantId] || null });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 
