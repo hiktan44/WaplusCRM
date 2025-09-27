@@ -24,6 +24,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files statically for previews/downloads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve landing (Vite build) if present at /web-ui/dist
+app.use('/landing', express.static(path.join(__dirname, 'web-ui', 'dist')));
 
 // WhatsApp clients storage (key: `${tenantId}:${instanceName}`)
 const clients = new Map();
