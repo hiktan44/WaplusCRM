@@ -636,6 +636,7 @@ app.post('/instance/create', async (req, res) => {
 
         const tenantId = resolveTenantId(req);
         const clientKey = `${tenantId}:${instanceName}`;
+        const clientIdSafe = clientKey.replace(/[^a-zA-Z0-9_-]/g, '-');
         if (clients.has(clientKey)) {
             return res.status(409).json({ error: 'Instance already exists' });
         }
@@ -643,7 +644,7 @@ app.post('/instance/create', async (req, res) => {
         // Create WhatsApp client with enhanced config for stability
         const client = new Client({
             authStrategy: new LocalAuth({
-                clientId: clientKey,
+                clientId: clientIdSafe,
                 dataPath: path.join(__dirname, 'sessions', tenantId)
             }),
             puppeteer: {
